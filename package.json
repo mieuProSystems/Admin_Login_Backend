@@ -1,0 +1,35 @@
+{
+  "name": "loginapp",
+  "version": "1.0.0",
+  "description": "Login Auth",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Vignesh",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "bootstrap": "^4.3.1",
+    "connect-flash": "^0.1.1",
+    "cookie-parser": "^1.4.4",
+    "cors": "^2.8.5",
+    "ejs": "^2.6.1",
+    "express": "^4.16.4",
+    "express-ejs-layouts": "^2.5.0",
+    "express-handlebars": "^3.1.0",
+    "express-session": "^1.16.2",
+    "express-validator": "^5.3.1",
+    "mongodb": "^3.3.2",
+    "mongoose": "^5.4.1",
+    "node-strings": "^1.0.2",
+    "nodemailer": "^6.3.0",
+    "passport": "^0.4.0",
+    "passport-local": "^1.0.0",
+    "passport-one-session-per-user": "^1.0.3",
+    "url": "^0.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.9"
+  }
+}
