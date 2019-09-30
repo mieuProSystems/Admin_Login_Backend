@@ -7,8 +7,8 @@ var async = require('async');
 var crypto = require('crypto');
 var nodemailer = require('nodemailer');
 var passport = require('passport');
-var demomail = "cloudofanonym@gmail.com"
-var key = "w0rldsucks";
+var mail_id = "Your mail id"
+var key = "Your Password";
 
 //Variable to Store the data coming from frontend
 var firstName, lastName, userMail, password, gender, mobileNo, sessionToken ;
@@ -47,7 +47,7 @@ router.post('/register',async(req,res) =>{
         var smtpTransport = nodemailer.createTransport({
           service: 'Gmail',
           auth: {
-            user: demomail,
+            user: mail_id,
             pass: key
           }
         });
@@ -85,7 +85,7 @@ router.post('/register',async(req,res) =>{
       var smtpTransport = nodemailer.createTransport({
         service: 'Gmail',
         auth: {
-          user: demomail,
+          user: mail_id,
           pass: key
         }
       });
@@ -237,7 +237,7 @@ router.post('/forgot', function(req, res, next) {
     var smtpTransport = nodemailer.createTransport({
       service: 'Gmail',
       auth: {
-        user: demomail,
+        user: mail_id,
         pass: key
       }
     });
