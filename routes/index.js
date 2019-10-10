@@ -1,17 +1,18 @@
-//Dependencies
-const express = require('express');
-const router = express.Router();
+var express = require('express');
+var router = express.Router();
 var User = require('../lib/User');
 var Session = require('../lib/Session');
+var Channel = require('../lib/Channel');
 var async = require('async');
 var crypto = require('crypto');
 var nodemailer = require('nodemailer');
-var passport = require('passport');
-var mail_id = "Your mail id"
-var key = "Your Password";
-
-//Variable to Store the data coming from frontend
+var _ = require('underscore');
 var firstName, lastName, userMail, password, gender, mobileNo, sessionToken ;
+
+// Welcome page
+router.get('/', function(req,res){
+  res.render('index');
+});
 
 //Register page
 router.post('/register',async(req,res) =>{
@@ -25,7 +26,6 @@ router.post('/register',async(req,res) =>{
    var tokenForAuthentication;
    var newuser = new User();
 
-   //Checking whether the mail-id exist or not
    let user = await User.findOne({ userMail: req.body.userMail});
     if(user){
       if(user.isVerified){
@@ -43,12 +43,11 @@ router.post('/register',async(req,res) =>{
           }
         });
         tokenForAuthentication = user.token;
-        //For Sending the e-mail
         var smtpTransport = nodemailer.createTransport({
           service: 'Gmail',
           auth: {
-            user: mail_id,
-            pass: key
+            user: 'cloudofanonym@gmail.com',
+            pass: 'l!fesucks'
           }
         });
         var mailOptions = {
@@ -64,46 +63,46 @@ router.post('/register',async(req,res) =>{
         });
       }
     }
-    else{
-      newuser.firstName = firstName;
-      newuser.lastName = lastName;
-      newuser.gender = gender;
-      newuser.userMail = userMail;
-      newuser.password = password;
-      newuser.mobileNo = mobileNo;
-      newuser.token = crypto.randomBytes(16).toString('hex');
-      tokenForAuthentication = newuser.token;
-      newuser.createdAt = Date(Date.now());
-      await(newuser.save(function(err, savedUser) {
-        if(err)
-        {
-          console.log(err);
-          return res.status(200).send();
-        }
-      }));
+      else{
+        newuser.firstName = firstName;
+        newuser.lastName = lastName;
+        newuser.gender = gender;
+        newuser.userMail = userMail;
+        newuser.password = password;
+        newuser.mobileNo = mobileNo;
+        newuser.token = crypto.randomBytes(16).toString('hex');
+        tokenForAuthentication = newuser.token;
+        newuser.createdAt = Date(Date.now());
+        await(newuser.save(function(err, savedUser) {
+          if(err)
+          {
+            console.log(err);
+            return res.status(200).send();
+          }
+        }));
 
-      var smtpTransport = nodemailer.createTransport({
-        service: 'Gmail',
-        auth: {
-          user: mail_id,
-          pass: key
-        }
-      });
-      var mailOptions = {
-        to: req.body.userMail,
-        from: 'mail tester',
-        subject: 'Request for registration',
-        text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/confirmation\/' + tokenForAuthentication + '.\n' 
-      };
-      smtpTransport.sendMail(mailOptions, function(err) {
-        
-        console.log('An e-mail has been sent to ' + req.body.userMail + ' for registration');
-        return res.send(JSON.stringify({"description":"Activation link has been sent to your entered mail!!!", "status": "success"}));
-      });
-      }
-});//End of registration
+        var smtpTransport = nodemailer.createTransport({
+          service: 'Gmail',
+          auth: {
+            user: 'cloudofanonym@gmail.com',
+            pass: 'l!fesucks'
+          }
+        });
+        var mailOptions = {
+          to: req.body.userMail,
+          from: 'mail tester',
+          subject: 'Request for registration',
+          text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/confirmation\/' + tokenForAuthentication + '.\n' 
+        };
+        smtpTransport.sendMail(mailOptions, function(err) {
+          
+          console.log('An e-mail has been sent to ' + req.body.userMail + ' for registration');
+          return res.send(JSON.stringify({"description":"Activation link has been sent to your entered mail!!!", "status": "success"}));
+        });
+   }
+});
 
-//API for confirmation to register the e-mail
+//E-mail Verification
 router.get('/confirmation/*',async (req, res, next) => {
 
   var url = req.url;
@@ -112,8 +111,12 @@ router.get('/confirmation/*',async (req, res, next) => {
   var myquery = { token : token};
   var newvalues = { $set : {isVerified : true}};
 
+  console.log(tokenArray);
+  console.log(token);
   User.findOne({token : token}, function(err, user){
+    console.log(user);
     if(user){
+
       if(!user.isVerified){
         User.updateOne(myquery, newvalues, function(err, response){
         console.log("Registration Success for " + user.userMail);
@@ -130,8 +133,7 @@ router.get('/confirmation/*',async (req, res, next) => {
       return res.status(200).send(JSON.stringify({"description":"Link Expired...please try again", "status" : "failed"}));
     }
   });
-});//End of Confirmation
-
+});
 
 //Login Page
 router.post('/login', function(req,res){
@@ -141,58 +143,56 @@ router.post('/login', function(req,res){
   var myquery = { userMail : userMail};
   var newvalues = { $set : {isLogged : true}};
 
-  User.findOne({userMail : userMail}, function(err, user){
-  if(err){
-    console.log(err);
-  }
-  //If User exists
-    if(user){
-      if(user.isVerified){
-        if(user.password != password){
-          console.log("Incorrect Password... Please try again!");
-          return res.send(JSON.stringify({"description":"Incorrect Password... Please try again!", "status":"failed"}));
-        }
-        else{
-          if(user.isLogged){
-            console.log("Already Logged in other device!");
-            return res.send(JSON.stringify({"description":"Already Logged in other device!", "status":"failed"}));
+      User.findOne({userMail : userMail}, function(err, user){
+        //console.log(user);
+      if(err){
+        console.log("error");
+      }
+
+      if(user){
+        if(user.isVerified){
+          if(user.password != password){
+            console.log("Incorrect Password... Please try again!");
+            return res.send(JSON.stringify({"description":"Incorrect Password... Please try again!", "status":"failed"}));
           }
           else{
-            User.updateOne(myquery, newvalues, function(err, response){
-            console.log("Login Success");
-            sessionToken = crypto.randomBytes(16).toString('hex');
-            var loginsession = new Session();
-            loginsession.userMail = user.userMail;
-            loginsession.firstName = user.firstName;
-            loginsession.lastName  = user.lastName;
-            loginsession.token = sessionToken;
-            loginsession.loginTime = Date(Date.now());
-            loginsession.save(function(err, savedUser) {
-              if(err)
-              {
-                console.log(err);
-                return res.status(200).send();
-              }
-            });
-            return res.send(JSON.stringify({"description":"Login Successful!!!", "status" : "success", "token" : loginsession.token}));      
-            });
-          }
-        }//
-      }
-      //If Registered mail-id is not verified 
+            if(user.isLogged){
+              console.log("Already Logged in other device!");
+              return res.send(JSON.stringify({"description":"Already Logged in other device!", "status":"failed"}));
+             }
+            else{
+              User.updateOne(myquery, newvalues, function(err, response){
+              console.log("Login Success");
+              sessionToken = crypto.randomBytes(16).toString('hex');
+              var loginsession = new Session();
+              loginsession.userMail = user.userMail;
+              loginsession.firstName = user.firstName;
+              loginsession.lastName  = user.lastName;
+              loginsession.token = sessionToken;
+              loginsession.loginTime = Date(Date.now());
+              loginsession.save(function(err, savedUser) {
+                if(err)
+                {
+                  console.log(err);
+                  return res.status(200).send();
+                }
+              });
+              return res.send(JSON.stringify({"description":"Login Successful!!!", "status" : "success", "token" : loginsession.token}));      
+              });
+            }
+          }//
+        }
+        else{
+          console.log(user.userMail + "Usermail is not verified");
+          return res.send(JSON.stringify({"description":"Your Mail-id has not been verified yet...Please Verify", "status":"failed"}));
+        }  
+      }//top if closed
       else{
-        console.log(user.userMail + "Usermail is not verified");
-        return res.send(JSON.stringify({"description":"Your Mail-id has not been verified yet...Please Verify", "status":"failed"}));
-      }  
-    }//top if closed
-
-    else{
-      console.log("User mail doesn't Exist... Create a new one!");
-      return res.send(JSON.stringify({"description":"User mail doesn't Exist... Create a new one!", "status":"failed"}));
-    }
-  }); 
-});//End of Login API
-
+        console.log("User mail doesn't Exist... Create a new one!");
+        return res.send(JSON.stringify({"description":"User mail doesn't Exist... Create a new one!", "status":"failed"}));
+      }
+    }); 
+});
 
 //Logout
 router.post('/logout',function(req,res){
@@ -212,47 +212,138 @@ router.post('/logout',function(req,res){
             if(err) console.log(err);
           });
           return res.status(200).send(JSON.stringify({"description":"Succesfully logged out!", "status":"success"}));
-        });
-      }
-      else{
-          console.log(userMail + " was not logged in");
-          return res.status(404).send(JSON.stringify({"description":"You're not logged in...!", "status":"failed"}));
-      }
+      });
     }
     else{
-      console.log(userMail + " is not a registered user");
-      return res.status(404).send(JSON.stringify({"description":"You're not a registered user...please register!", "status":"failed"}));
+        console.log(userMail + " was not logged in");
+        return res.status(404).send(JSON.stringify({"description":"You're not logged in...!", "status":"failed"}));
     }
-  });
-});//End of Logout
+  }
+  else{
+    console.log(userMail + " is not a registered user");
+    return res.status(404).send(JSON.stringify({"description":"You're not a registered user...please register!", "status":"failed"}));
+  }
+});
 
+});
 
 //Forgot password
 router.post('/forgot', function(req, res, next) {
-  User.findOne({ userMail: req.body.userMail }, function(err, user) {
-    if (!user) {
-      console.log('No account with that email address exists.');
-      return res.send(JSON.stringify({"description":"Mail-Id doesn't exist...Create a new one!","status" : "failed"}));
+  async.waterfall([
+    function(done) {
+      crypto.randomBytes(20, function(err, buf) {
+        var token = buf.toString('hex');
+        done(err, token);
+      });
+    },
+    function(token, done) {
+      User.findOne({ userMail: req.body.userMail }, function(err, user) {
+        if (!user) {
+          console.log('No account with that email address exists.');
+          return res.send(JSON.stringify({"description":"Mail-Id doesn't exist...Create a new one!","status" : "failed"}));
+         // return res.redirect('/forgot');
+        }
+
+        user.resetPasswordToken = token;
+        user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+
+        user.save(function(err) {
+          done(err, token, user);
+        });
+      });
+    },
+    function(token, user, done) {
+      var smtpTransport = nodemailer.createTransport({
+        service: 'Gmail',
+        auth: {
+          user: 'cloudofanonym@gmail.com',
+          pass: 'l!fesucks'
+        }
+      });
+      var mailOptions = {
+        to: req.body.userMail,
+        from: 'mail tester',
+        subject: 'Node.js Password Reset',
+        text : 'Your Password is \"' + user.password + '\"'
+      };
+      smtpTransport.sendMail(mailOptions, function(err) {
+        
+        console.log('Password has been sent to ' + req.body.userMail + ' with further instructions.');
+        return res.send(JSON.stringify({"description":"Password has been sent to your registered mail!!!", "status" : "success"}));
+      });
     }
-    var smtpTransport = nodemailer.createTransport({
-      service: 'Gmail',
-      auth: {
-        user: mail_id,
-        pass: key
-      }
-    });
-    var mailOptions = {
-      to: req.body.userMail,
-      from: 'mail tester',
-      subject: 'Request for Password Reset',
-      text : 'Your Password is \"' + user.password + '\"'
-    };
-    smtpTransport.sendMail(mailOptions, function(err) { 
-      console.log('Password has been sent to ' + req.body.userMail + ' with further instructions.');
-      return res.send(JSON.stringify({"description":"Password has been sent to your registered mail!!!", "status" : "success"}));
-    });
+  ], function(err) {
+    if (err) return next(err);
+    res.redirect('/forgot');
   });
 });
 
+//Add Channel and video info
+router.post('/home/add/channel',function(req,res){
 
+  console.log(req.body);
+  var channel_id = req.body.channel;
+  var videos_id = req.body.videos;
+  console.log(channel_id);
+  console.log(videos_id);
+    Channel.findOne({channelId : channel_id}, function(err, user){
+      if(user){
+        Channel.updateOne({channelId : channel_id},{$addToSet: {videosId : videos_id}} ,function(err, response) {
+          if (err) throw err;
+          return res.status(200).send("Videos appedned successfully");
+        });
+      }
+      else{
+        var newChannel = new Channel();
+
+        newChannel.channelId = channel_id;
+        newChannel.videosId = videos_id;
+        newChannel.save();
+        return res.status(200).send("Channel created Successfully");
+      }
+});
+});
+
+//Remove Channel and video Info
+router.post('/home/remove/channel',function(req,res){
+
+  var channel_id = req.body.channel;
+  var videos_id = req.body.videos;
+    Channel.findOne({channelId : channel_id}, function(err, user){
+      if(user){
+        var invalid_elements = _.difference(videos_id,user.videosId);
+        if(invalid_elements)
+        {
+          console.log(invalid_elements)
+          return res.status(404).send("invalid elements found--> "+ invalid_elements);
+      }
+      else{
+        Channel.update({channelId : channel_id},{$pullAll: {videosId : videos_id}},function(err, response) {
+          if (err) throw err;
+          console.log(response);
+          if(response.nModified)
+            return res.status(200).send("Videos deleted successfully");
+      });        
+      }
+    }
+      else{
+        return res.status(404).send("Channel doesn't exist");
+      }
+    });
+});
+
+//Remove a registered user
+router.post('/remove-user',function(req,res){
+  var userMail = req.body.userMail;
+  User.findOne({userMail:userMail},function(err,user){
+    if(user){
+      User.deleteOne({userMail:userMail},function(err,obj){
+        if(err) throw err;
+        return res.status(200).send(JSON.stringify({"description":"User Info Deleted Successfully","status":"success"}));
+      });
+    }
+    else
+    return res.status(404).send(JSON.stringify({"description":"Usermail doesn't exist","status":"failure"}));
+  });
+});
 module.exports = router;
