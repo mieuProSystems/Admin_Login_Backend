@@ -3,16 +3,12 @@ var router = express.Router();
 var User = require('../lib/User');
 var Session = require('../lib/Session');
 var Channel = require('../lib/Channel');
+var Feedback = require('../lib/Feedback');
 var async = require('async');
 var crypto = require('crypto');
 var nodemailer = require('nodemailer');
 var _ = require('underscore');
 var firstName, lastName, userMail, password, gender, mobileNo, sessionToken ;
-
-// Welcome page
-router.get('/', function(req,res){
-  res.render('index');
-});
 
 //Register page
 router.post('/register',async(req,res) =>{
@@ -228,7 +224,7 @@ router.post('/logout',function(req,res){
 });
 
 //Forgot password
-router.post('/forgot', function(req, res, next) {
+router.post('/forgotPassword', function(req, res, next) {
   async.waterfall([
     function(done) {
       crypto.randomBytes(20, function(err, buf) {
@@ -279,33 +275,41 @@ router.post('/forgot', function(req, res, next) {
 });
 
 //Add Channel and video info
-router.post('/home/add/channel',function(req,res){
+router.post('/home/add/channelVideos',function(req,res){
 
-  console.log(req.body);
-  var channel_id = req.body.channel;
-  var videos_id = req.body.videos;
-  console.log(channel_id);
-  console.log(videos_id);
-    Channel.findOne({channelId : channel_id}, function(err, user){
-      if(user){
-        Channel.updateOne({channelId : channel_id},{$addToSet: {videosId : videos_id}} ,function(err, response) {
-          if (err) throw err;
-          return res.status(200).send("Videos appedned successfully");
-        });
-      }
-      else{
-        var newChannel = new Channel();
+  var channel_name = req.body.channelName;
+  var channel_id   = req.body.channelId;
+  var videos_id    = req.body.videoIds;
+  var time         = req.body.currentTime;
+  var date         = req.body.currentDate;
+  var video_titles = req.body.videoTitles;
+ // console.log(req.body);
+  Channel.findOne({channelId : channel_id}, function(err, user){
+    if(user){
+      Channel.updateOne({channelId : channel_id},{$addToSet: {videosId : videos_id}, currentDate:date, currentTime:time} ,function(err, response) {
+        if (err) throw err;
+        console.log(Channel.channelName + " Videos Added successfully");
+        return res.status(200).send(JSON.stringify ({"description": "Videos appended to" + Channel.channelName + " successfully","status":"success"}));
+      });
+    }
+    else{
+      var newChannel = new Channel();
 
-        newChannel.channelId = channel_id;
-        newChannel.videosId = videos_id;
-        newChannel.save();
-        return res.status(200).send("Channel created Successfully");
-      }
+      newChannel.channelId = channel_id;
+      newChannel.videoIds = videos_id;
+      newChannel.currentDate = date;
+      newChannel.currentTime = time;
+      newChannel.channelName = channel_name;
+      newChannel.videoTitles = video_titles;
+      newChannel.save();
+      console.log(channel_name + " Created successfully");
+      return res.status(200).send(JSON.stringify ({"description":channel_name + " Channel Created successfully","status":"success"}));
+    }
+  });
 });
-});
 
-//Remove Channel and video Info
-router.post('/home/remove/channel',function(req,res){
+//Remove video Info
+router.post('/home/remove/videos',function(req,res){
 
   var channel_id = req.body.channel;
   var videos_id = req.body.videos;
@@ -314,21 +318,38 @@ router.post('/home/remove/channel',function(req,res){
         var invalid_elements = _.difference(videos_id,user.videosId);
         if(invalid_elements)
         {
-          console.log(invalid_elements)
-          return res.status(404).send("invalid elements found--> "+ invalid_elements);
+          console.log("invalid elements found--> "+invalid_elements);
+          return res.status(404).send(JSON.stringify ({"description":"invalid elements found--> "+ invalid_elements,"status":"failure"}));
+        }
+        else{
+          Channel.update({channelId : channel_id},{$pullAll: {videosId : videos_id}},function(err, response) {
+            if (err) throw err;
+            console.log("Videos deleted successfully");
+            if(response.nModified)
+            return res.status(200).send(JSON.stringify ({"description":"Videos deleted successfully","status":"success"}));
+        });        
+        }
       }
       else{
-        Channel.update({channelId : channel_id},{$pullAll: {videosId : videos_id}},function(err, response) {
-          if (err) throw err;
-          console.log(response);
-          if(response.nModified)
-            return res.status(200).send("Videos deleted successfully");
-      });        
+        return res.status(404).send(JSON.stringify ({"description":"Channel doesn't exist","status":"failure"}));
       }
-    }
-      else{
-        return res.status(404).send("Channel doesn't exist");
+    });
+});
+
+//Remove Channel
+router.post('/home/remove/channel',function(req,res){
+
+  var channel_id = req.body.channel;
+    Channel.findOne({channelId : channel_id}, function(err, channel){
+      if(channel){
+        Channel.deleteOne({userMail:userMail},function(err,obj){
+          if(err) throw err;
+          console.log(Channel.channelName + " channel deleted successfully");
+          return res.status(200).send(JSON.stringify({"description":"Channel Deleted Successfully","status":"success"}));
+        });
       }
+      else
+      return res.status(404).send(JSON.stringify({"description":"Channel doesn't exist","status":"failure"}));
     });
 });
 
@@ -339,11 +360,80 @@ router.post('/remove-user',function(req,res){
     if(user){
       User.deleteOne({userMail:userMail},function(err,obj){
         if(err) throw err;
+        console.log(userMail + " deleted successfully");
         return res.status(200).send(JSON.stringify({"description":"User Info Deleted Successfully","status":"success"}));
       });
     }
     else
+    console.log(userMail + " doesn't exist to remove");
     return res.status(404).send(JSON.stringify({"description":"Usermail doesn't exist","status":"failure"}));
   });
+});
+
+//Get the details about the channels and videos
+router.get('/home/getVideos', function(req, res) {
+  var usersProjection = { 
+    __v: false,
+    _id: false,
+    currentTime : false,
+    currentDate : false
+  };
+
+  Channel.find({}, usersProjection, function (err, channel) {
+      if (err) return next(err);
+      console.log("Get Video request processed successfully");
+      return res.status(200).send(JSON.stringify(channel));
+  }); 
+});
+
+//to get admin details
+router.get('/home/accountInformation/getAdminDetails',function(req,res){
+  //Temporarily for Single admin only
+  console.log("Inside func");
+  var usersProjection = { 
+    __v: false,
+    _id: false,
+    isLogged : false,
+    isVerified : false,
+    token : false, //Not needed for multiple admins
+    createdAt : false,
+    password : false
+  };
+
+  User.find({}, usersProjection, function (err, admin) {
+      if (err) return next(err);
+      console.log("Get Admin details request processed successfully");
+      return res.status(200).send(JSON.stringify(admin));
+  }); 
+});
+
+//to get feedback from user
+router.get('/home/user/feedback',function(req,res){
+  var userMail = req.body.userMail;
+  var feedback = req.body.feedback; 
+
+  var new_feedback = new Feedback();
+
+  new_feedback.userMail = userMail;
+  new_feedback.feedback = feedback;
+  new_feedback.givenTime = Date(Date.now());
+  new_feedback.save();
+  console.log("Feedback saved successfully");
+
+  return res.status(200).send(JSON.stringify({"description":"Feedback has been sent successfully","status":"success"}));
+});
+
+//to send the feedback
+router.get('/home/user/getFeedback', function(req, res) {
+  var usersProjection = { 
+    __v: false,
+    _id: false
+  };
+
+  Feedback.find({}, usersProjection, function (err, feedback) {
+      if (err) return next(err);
+      console.log("Feedbacks sent successfully");
+      return res.status(200).send(JSON.stringify(feedback));
+  }); 
 });
 module.exports = router;
