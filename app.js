@@ -4,7 +4,6 @@ const mongo = require('mongodb');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const session = require('express-session');
 
 //Establishing the connection to the database
 mongoose.connect('mongodb://localhost/LoginApp',{useNewUrlParser: true,useUnifiedTopology: true, useCreateIndex: true});
