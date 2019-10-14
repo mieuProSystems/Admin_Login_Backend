@@ -1,9 +1,7 @@
 # Admin_Login_Backend
 Back end Code for Admin Login
 
-/***************************************/
-            Prerequistics
-/***************************************/
+
 1.You can download MongoDB from 
 	https://www.mongodb.com/download-center/community
 
