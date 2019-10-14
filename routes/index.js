@@ -12,6 +12,7 @@ var firstName, lastName, userMail, password, gender, mobileNo, sessionToken ;
 
 //Register page
 router.post('/register',async(req,res) =>{
+  try{
    firstName = req.body.firstName;
    lastName = req.body.lastName;
    gender = req.body.gender;
@@ -48,7 +49,6 @@ router.post('/register',async(req,res) =>{
         });
         var mailOptions = {
           to: req.body.userMail,
-          from: 'mail tester',
           subject: 'Request for registration',
           text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/confirmation\/' + tokenForAuthentication + '.\n' 
         };
@@ -86,7 +86,6 @@ router.post('/register',async(req,res) =>{
         });
         var mailOptions = {
           to: req.body.userMail,
-          from: 'mail tester',
           subject: 'Request for registration',
           text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/confirmation\/' + tokenForAuthentication + '.\n' 
         };
@@ -96,11 +95,16 @@ router.post('/register',async(req,res) =>{
           return res.send(JSON.stringify({"description":"Activation link has been sent to your entered mail!!!", "status": "success"}));
         });
    }
+  }
+  catch(err){
+    console.log(err);
+    return res.status(500).send(err);
+  }
 });
 
 //E-mail Verification
 router.get('/confirmation/*',async (req, res, next) => {
-
+try{
   var url = req.url;
   var tokenArray = url.split("/confirmation/");
   var token = tokenArray[1];
@@ -116,12 +120,14 @@ router.get('/confirmation/*',async (req, res, next) => {
       if(!user.isVerified){
         User.updateOne(myquery, newvalues, function(err, response){
         console.log("Registration Success for " + user.userMail);
-        return res.status(200).send(JSON.stringify({"description":"Registration Success!!!", "status" : "success","token" : user.token}));      
+        return res.sendFile('./html/register-success', {root: __dirname });
+        //return res.status(200).send(JSON.stringify({"description":"Registration Success!!!", "status" : "success","token" : user.token}));      
         });
       }
       else{
         console.log("Email " + user.userMail + " is already registered");
-        return res.status(200).send(JSON.stringify({"description":"You're already registered!..Please login", "status" : "failed"}));
+        return res.sendFile('./html/already-register.html', {root: __dirname });
+        //return res.status(200).send(JSON.stringify({"description":"You're already registered!..Please login", "status" : "failed"}));
       }
     }
     else{
@@ -129,10 +135,16 @@ router.get('/confirmation/*',async (req, res, next) => {
       return res.status(200).send(JSON.stringify({"description":"Link Expired...please try again", "status" : "failed"}));
     }
   });
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //Login Page
 router.post('/login', function(req,res){
+  try{
   console.log(req.body);
   var userMail = req.body.userMail;
   var password = req.body.password;
@@ -188,10 +200,16 @@ router.post('/login', function(req,res){
         return res.send(JSON.stringify({"description":"User mail doesn't Exist... Create a new one!", "status":"failed"}));
       }
     }); 
+  }
+  catch(err){
+    console.log(err);
+    return res.status(500).send(err);
+  }
 });
 
 //Logout
 router.post('/logout',function(req,res){
+  try{
   var userMail = req.body.userMail;
   var loginToken = req.body.loginToken;
   var myquery = { userMail : userMail};  
@@ -220,11 +238,16 @@ router.post('/logout',function(req,res){
     return res.status(404).send(JSON.stringify({"description":"You're not a registered user...please register!", "status":"failed"}));
   }
 });
-
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //Forgot password
 router.post('/forgotPassword', function(req, res, next) {
+  try{
   async.waterfall([
     function(done) {
       crypto.randomBytes(20, function(err, buf) {
@@ -258,8 +281,7 @@ router.post('/forgotPassword', function(req, res, next) {
       });
       var mailOptions = {
         to: req.body.userMail,
-        from: 'mail tester',
-        subject: 'Node.js Password Reset',
+        subject: 'Admin Password',
         text : 'Your Password is \"' + user.password + '\"'
       };
       smtpTransport.sendMail(mailOptions, function(err) {
@@ -272,50 +294,72 @@ router.post('/forgotPassword', function(req, res, next) {
     if (err) return next(err);
     res.redirect('/forgot');
   });
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //Add Channel and video info
 router.post('/home/add/channelVideos',function(req,res){
-
-  var channel_name = req.body.channelName;
-  var channel_id   = req.body.channelId;
-  var videos_id    = req.body.videoIds;
-  var time         = req.body.currentTime;
-  var date         = req.body.currentDate;
-  var video_titles = req.body.videoTitles;
- // console.log(req.body);
-  Channel.findOne({channelId : channel_id}, function(err, user){
-    if(user){
-      Channel.updateOne({channelId : channel_id},{$addToSet: {videosId : videos_id}, currentDate:date, currentTime:time} ,function(err, response) {
+try{
+  var channel_name      = req.body.channelName;
+  var channel_id        = req.body.channelId;
+  var videos_id         = req.body.videoIds;
+  var time              = req.body.currentTime;
+  var date              = req.body.currentDate;
+  var video_titles      = req.body.videoTitles;
+  var video_thumbnails  = req.body.videoThumbnails;
+  var changes_in_videos ;
+  //console.log(req.body);
+  Channel.findOne({channelId : channel_id}, function(err, channel){
+    //console.log(channel);
+    if(channel){
+      changes_in_videos = _.difference(video_titles,channel.videoTitles);
+      //console.log(changes_in_videos.toString());
+      if(!changes_in_videos.toString()){
+        console.log("No changes in channel");
+        return res.status(500).send(JSON.stringify ({"description": "Channel is already there and no changes in videos","status":"failed"}));
+      }
+      else{
+      Channel.updateOne({channelId : channel_id},{$addToSet: {videoIds : videos_id,videoThumbnails : video_thumbnails,videoTitles:video_titles}, currentDate : date, currentTime : time} ,function(err, response) {
         if (err) throw err;
-        console.log(Channel.channelName + " Videos Added successfully");
-        return res.status(200).send(JSON.stringify ({"description": "Videos appended to" + Channel.channelName + " successfully","status":"success"}));
-      });
+        console.log(channel.channelName + " Videos Added successfully");
+        return res.status(200).send(JSON.stringify ({"description": changes_in_videos + " videos appended to " + channel.channelName + " successfully","status":"success"}));
+        });
+      }
     }
     else{
       var newChannel = new Channel();
 
-      newChannel.channelId = channel_id;
-      newChannel.videoIds = videos_id;
-      newChannel.currentDate = date;
-      newChannel.currentTime = time;
-      newChannel.channelName = channel_name;
-      newChannel.videoTitles = video_titles;
+      newChannel.channelId        = channel_id;
+      newChannel.videoIds         = videos_id;
+      newChannel.currentDate      = date;
+      newChannel.currentTime      = time;
+      newChannel.channelName      = channel_name;
+      newChannel.videoTitles      = video_titles;
+      newChannel.videoThumbnails  = video_thumbnails;
       newChannel.save();
       console.log(channel_name + " Created successfully");
       return res.status(200).send(JSON.stringify ({"description":channel_name + " Channel Created successfully","status":"success"}));
     }
   });
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //Remove video Info
 router.post('/home/remove/videos',function(req,res){
-
+try{
   var channel_id = req.body.channel;
   var videos_id = req.body.videos;
     Channel.findOne({channelId : channel_id}, function(err, user){
       if(user){
-        var invalid_elements = _.difference(videos_id,user.videosId);
+        var invalid_elements = _.difference(videos_id,user.videosIds);
         if(invalid_elements)
         {
           console.log("invalid elements found--> "+invalid_elements);
@@ -334,62 +378,87 @@ router.post('/home/remove/videos',function(req,res){
         return res.status(404).send(JSON.stringify ({"description":"Channel doesn't exist","status":"failure"}));
       }
     });
+  }
+  catch(err){
+    console.log(err);
+    return res.status(500).send(err);
+  }
 });
 
 //Remove Channel
 router.post('/home/remove/channel',function(req,res){
-
+try{
   var channel_id = req.body.channel;
     Channel.findOne({channelId : channel_id}, function(err, channel){
       if(channel){
-        Channel.deleteOne({userMail:userMail},function(err,obj){
+        Channel.deleteOne({channelId:channel_id},function(err,obj){
           if(err) throw err;
-          console.log(Channel.channelName + " channel deleted successfully");
+          console.log("Channel deleted successfully");
           return res.status(200).send(JSON.stringify({"description":"Channel Deleted Successfully","status":"success"}));
         });
       }
       else
       return res.status(404).send(JSON.stringify({"description":"Channel doesn't exist","status":"failure"}));
     });
+  }
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //Remove a registered user
-router.post('/remove-user',function(req,res){
-  var userMail = req.body.userMail;
-  User.findOne({userMail:userMail},function(err,user){
+router.post('/removeUser',function(req,res){
+  try{
+  var user_mail = req.body.userMail;
+  User.findOne({userMail:user_mail},function(err,user){
     if(user){
-      User.deleteOne({userMail:userMail},function(err,obj){
+      User.deleteOne({userMail:user_mail},function(err,obj){
         if(err) throw err;
-        console.log(userMail + " deleted successfully");
+        console.log(user_mail + " deleted successfully");
         return res.status(200).send(JSON.stringify({"description":"User Info Deleted Successfully","status":"success"}));
       });
     }
-    else
-    console.log(userMail + " doesn't exist to remove");
+    else{
+    console.log(user_mail + " doesn't exist to remove");
     return res.status(404).send(JSON.stringify({"description":"Usermail doesn't exist","status":"failure"}));
+    }
   });
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //Get the details about the channels and videos
 router.get('/home/getVideos', function(req, res) {
+  try{
   var usersProjection = { 
     __v: false,
     _id: false,
     currentTime : false,
+    //videoIds : false,
+   // videoTitles : false,
     currentDate : false
   };
 
-  Channel.find({}, usersProjection, function (err, channel) {
+  Channel.find({}, usersProjection).sort('-currentDate').sort('-currentTime').exec(function (err, channel) {
       if (err) return next(err);
       console.log("Get Video request processed successfully");
       return res.status(200).send(JSON.stringify(channel));
   }); 
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //to get admin details
 router.get('/home/accountInformation/getAdminDetails',function(req,res){
+try{
   //Temporarily for Single admin only
-  console.log("Inside func");
   var usersProjection = { 
     __v: false,
     _id: false,
@@ -401,14 +470,20 @@ router.get('/home/accountInformation/getAdminDetails',function(req,res){
   };
 
   User.find({}, usersProjection, function (err, admin) {
-      if (err) return next(err);
-      console.log("Get Admin details request processed successfully");
-      return res.status(200).send(JSON.stringify(admin));
+    if (err) return next(err);
+    console.log("Get Admin details request processed successfully");
+    return res.status(200).send(JSON.stringify(admin));
   }); 
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //to get feedback from user
 router.get('/home/user/feedback',function(req,res){
+  try{
   var userMail = req.body.userMail;
   var feedback = req.body.feedback; 
 
@@ -420,11 +495,17 @@ router.get('/home/user/feedback',function(req,res){
   new_feedback.save();
   console.log("Feedback saved successfully");
 
-  return res.status(200).send(JSON.stringify({"description":"Feedback has been sent successfully","status":"success"}));
+  return res.status(200).send(JSON.stringify({"description":"Feedback has been saved successfully","status":"success"}));
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //to send the feedback
 router.get('/home/user/getFeedback', function(req, res) {
+  try{
   var usersProjection = { 
     __v: false,
     _id: false
@@ -435,6 +516,12 @@ router.get('/home/user/getFeedback', function(req, res) {
       console.log("Feedbacks sent successfully");
       return res.status(200).send(JSON.stringify(feedback));
   }); 
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
+
 
 module.exports = router;

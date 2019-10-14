@@ -1,13 +1,11 @@
 //Dependencies 
 const express = require('express');
-const mongo = require('mongodb');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
 //Establishing the connection to the database
 mongoose.connect('mongodb://localhost/LoginApp',{useNewUrlParser: true,useUnifiedTopology: true, useCreateIndex: true});
-const db = mongoose.connection;
 
 //Init App
 var app = express();
