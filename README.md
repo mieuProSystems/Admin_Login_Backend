@@ -8,10 +8,10 @@ Back end Code for Admin Login
 	https://www.mongodb.com/download-center/community
 
 2.You need Nodejs from 
-	nodejs.org/en/download/
+	https://www.nodejs.org/en/download/
 
 3.Open Command prompt in the project folder and run the command 
-	npm install
+	"npm install"
 
 4.To start the server run
-	nodemon app
+	"nodemon app"
