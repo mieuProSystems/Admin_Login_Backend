@@ -8,6 +8,7 @@ var async = require('async');
 var crypto = require('crypto');
 var nodemailer = require('nodemailer');
 var _ = require('underscore');
+var moment = require('moment');
 var firstName, lastName, userMail, password, gender, mobileNo, sessionToken ;
 
 //Register page
@@ -176,16 +177,16 @@ router.post('/login', function(req,res){
               loginsession.userMail = user.userMail;
               loginsession.firstName = user.firstName;
               loginsession.lastName  = user.lastName;
-              loginsession.token = sessionToken;
+              loginsession.loginToken = sessionToken;
               loginsession.loginTime = Date(Date.now());
               loginsession.save(function(err, savedUser) {
                 if(err)
                 {
                   console.log(err);
-                  return res.status(200).send();
+                  return res.status(500).send();
                 }
               });
-              return res.send(JSON.stringify({"description":"Login Successful!!!", "status" : "success", "token" : loginsession.token}));      
+              return res.send(JSON.stringify({"description":"Login Successful!!!", "status" : "success", "token" : loginsession.loginToken}));      
               });
             }
           }//
@@ -220,7 +221,7 @@ router.post('/logout',function(req,res){
       if(user.isLogged){
         User.updateOne(myquery, newvalues, function(err, response){
           console.log(userMail + " Succesfully logged out");
-          let loginquery = {token : loginToken};
+          let loginquery = {loginToken : loginToken};
           let logoutTime = { $set : {logoutTime : Date(Date.now())}};
           Session.updateOne(loginquery,logoutTime,function(err,response){
             if(err) console.log(err);
@@ -301,6 +302,43 @@ catch(err){
 }
 });
 
+//Change Password Authentication
+router.post('/changePassword',function(req,res){
+  console.log(req.body);
+  var myquery = { userMail : req.body.userMail};
+  var changePwdToken = crypto.randomBytes(16).toString('hex');
+  var newvalues = { $set : {changePasswordToken : changePwdToken}};
+  User.findOne({ userMail: req.body.userMail }, function(err, user) {
+    if(user){
+      if(user.password == req.body.oldPassword){
+        User.updateOne(myquery, newvalues, function(err, response){
+          return res.status(200).send(JSON.stringify({"description" : "Verified Successfully","status":"success" , "token" : changePwdToken}));  
+        });
+      }
+      else{
+        return res.status(400).send(JSON.stringify({"description" : "Verification failed...Please try again..!","status":"failed"}));  
+      }
+    }
+    else{
+      return res.status(404).send(JSON.stringify({"description" : "Usermail doesn't exist","status":"failed"}));
+    }
+  });
+});
+
+//Change Password Implementation
+router.post('/newPassword',function(req,res){
+  console.log(req.body);
+  var myquery = { changePasswordToken : req.body.changePasswordToken};
+  var newvalues = { $set : {password : req.body.newPassword}};
+  User.findOneAndUpdate(myquery, newvalues, function(err, response){
+    if(response){ 
+      console.log("Password updated successfully");
+      return res.status(200).send(JSON.stringify({"description" : "Your Password updated successfully","status":"success"}));
+    }
+    return res.status(400).send(JSON.stringify({"description" : "You can't directly enter new password","status":"failed"}));
+  });
+});
+
 //Add Channel and video info
 router.post('/home/add/channelVideos',function(req,res){
 try{
@@ -363,7 +401,7 @@ try{
         if(invalid_elements)
         {
           console.log("invalid elements found--> "+invalid_elements);
-          return res.status(404).send(JSON.stringify ({"description":"invalid elements found--> "+ invalid_elements,"status":"failure"}));
+          return res.status(404).send(JSON.stringify ({"description":"invalid elements found--> "+ invalid_elements,"status":"failed"}));
         }
         else{
           Channel.update({channelId : channel_id},{$pullAll: {videosId : videos_id}},function(err, response) {
@@ -375,7 +413,7 @@ try{
         }
       }
       else{
-        return res.status(404).send(JSON.stringify ({"description":"Channel doesn't exist","status":"failure"}));
+        return res.status(404).send(JSON.stringify ({"description":"Channel doesn't exist","status":"failed"}));
       }
     });
   }
@@ -398,7 +436,7 @@ try{
         });
       }
       else
-      return res.status(404).send(JSON.stringify({"description":"Channel doesn't exist","status":"failure"}));
+      return res.status(404).send(JSON.stringify({"description":"Channel doesn't exist","status":"failed"}));
     });
   }
 catch(err){
@@ -421,7 +459,7 @@ router.post('/removeUser',function(req,res){
     }
     else{
     console.log(user_mail + " doesn't exist to remove");
-    return res.status(404).send(JSON.stringify({"description":"Usermail doesn't exist","status":"failure"}));
+    return res.status(404).send(JSON.stringify({"description":"Usermail doesn't exist","status":"failed"}));
     }
   });
 }
@@ -466,12 +504,14 @@ try{
     isVerified : false,
     token : false, //Not needed for multiple admins
     createdAt : false,
-    password : false
+    password : false,
+    changePasswordToken : false
   };
 
-  User.find({}, usersProjection, function (err, admin) {
+  User.findOne({firstName:"Vignesh"}, usersProjection, function (err, admin) {
     if (err) return next(err);
     console.log("Get Admin details request processed successfully");
+   // console.log(admin);
     return res.status(200).send(JSON.stringify(admin));
   }); 
 }
@@ -479,6 +519,29 @@ catch(err){
   console.log(err);
   return res.status(500).send(err);
 }
+});
+
+router.post('/viewSessions',function(req,res){
+  try{
+    var usersProjection = { 
+      __v: false,
+      _id: false,
+      loginToken : false
+    };
+  
+    Session.find({userMail : req.body.userMail}, usersProjection).sort('-loginTime').exec(function (err, session) {
+        if (err) return next(err);
+        console.log("Get Sessions request processed successfully");
+        if(session.toString())
+          return res.status(200).send(JSON.stringify(session));
+        else
+          return res.status(200).send("No login History");
+    }); 
+  }
+  catch(err){
+    console.log(err);
+    return res.status(500).send(err);
+  }
 });
 
 //to get feedback from user
@@ -491,7 +554,8 @@ router.get('/home/user/feedback',function(req,res){
 
   new_feedback.userMail = userMail;
   new_feedback.feedback = feedback;
-  new_feedback.givenTime = Date(Date.now());
+  new_feedback.givenDate = moment().format("MMM Do YYYY");
+  new_feedback.givenTime = moment().format('hh:mm:ss a');
   new_feedback.save();
   console.log("Feedback saved successfully");
 
@@ -510,11 +574,16 @@ router.get('/home/user/getFeedback', function(req, res) {
     __v: false,
     _id: false
   };
+  var myquery = { read : false};  
+  var newvalues = { $set : {read : true}};
 
   Feedback.find({}, usersProjection, function (err, feedback) {
       if (err) return next(err);
       console.log("Feedbacks sent successfully");
-      return res.status(200).send(JSON.stringify(feedback));
+      res.send(JSON.stringify(feedback));
+      Feedback.updateMany(myquery, newvalues, function(err, response){
+      });
+      return res.status(200);
   }); 
 }
 catch(err){

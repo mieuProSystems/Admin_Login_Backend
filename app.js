@@ -5,7 +5,12 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 
 //Establishing the connection to the database
-mongoose.connect('mongodb://localhost/LoginApp',{useNewUrlParser: true,useUnifiedTopology: true, useCreateIndex: true});
+mongoose.connect('mongodb://localhost/LoginApp',
+                {useNewUrlParser: true,
+                useUnifiedTopology: true,
+                useCreateIndex: true,
+                useFindAndModify : false
+                });
 
 //Init App
 var app = express();
