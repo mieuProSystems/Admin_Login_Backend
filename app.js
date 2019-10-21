@@ -23,8 +23,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended : false}));
 
 //Init Route
-var routes = require('./routes/index');
+var routes = require('./routes/adminIndex');
+var user = require('./routes/userIndex');
+app.use('/', user);
 app.use('/', routes);
+
 
 //Set Port
 app.set('port',(process.env.PORT || 3000));
