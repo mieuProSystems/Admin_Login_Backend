@@ -307,30 +307,36 @@ catch(err){
 
 //Change Password Authentication
 adminRouter.post('/admin/changePassword',function(req,res){
-  console.log(req.body);
-  var myquery = { userMail : req.body.userMail};
-  var changePwdToken = crypto.randomBytes(16).toString('hex');
-  var newvalues = { $set : {changePasswordToken : changePwdToken}};
-  Admin.findOne({ userMail: req.body.userMail }, function(err, admin) {
-    if(admin){
-      if(admin.password == req.body.oldPassword){
-        Admin.updateOne(myquery, newvalues, function(err, response){
-          return res.status(200).send(JSON.stringify({"description" : "Verified Successfully","status":"success" , "token" : changePwdToken}));  
-        });
+  try{
+    console.log(req.body);
+    var myquery = { userMail : req.body.userMail};
+    var changePwdToken = crypto.randomBytes(16).toString('hex');
+    var newvalues = { $set : {changePasswordToken : changePwdToken}};
+    Admin.findOne({ userMail: req.body.userMail }, function(err, admin) {
+      if(admin){
+        if(admin.password == req.body.oldPassword){
+          Admin.updateOne(myquery, newvalues, function(err, response){
+            return res.status(200).send(JSON.stringify({"description" : "Verified Successfully","status":"success" , "token" : changePwdToken}));  
+          });
+        }
+        else{
+          return res.status(400).send(JSON.stringify({"description" : "Verification failed...Please try again..!","status":"failed"}));  
+        }
       }
       else{
-        return res.status(400).send(JSON.stringify({"description" : "Verification failed...Please try again..!","status":"failed"}));  
+        return res.status(404).send(JSON.stringify({"description" : "Usermail doesn't exist","status":"failed"}));
       }
-    }
-    else{
-      return res.status(404).send(JSON.stringify({"description" : "Usermail doesn't exist","status":"failed"}));
-    }
-  });
+    });
+  }
+  catch(err){
+    console.log(err);
+    return res.status(500).send(err);
+  }
 });
 
 //Change Password Implementation
 adminRouter.post('/admin/newPassword',function(req,res){
-  console.log(req.body);
+  try{
   var myquery = { changePasswordToken : req.body.changePasswordToken};
   var newvalues = { $set : {password : req.body.newPassword}};
   Admin.findOneAndUpdate(myquery, newvalues, function(err, response){
@@ -340,6 +346,11 @@ adminRouter.post('/admin/newPassword',function(req,res){
     }
     return res.status(400).send(JSON.stringify({"description" : "You can't directly enter new password","status":"failed"}));
   });
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //Add Channel and video info
@@ -595,6 +606,5 @@ catch(err){
   return res.status(500).send(err);
 }
 });
-
 
 module.exports = adminRouter;

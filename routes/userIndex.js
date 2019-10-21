@@ -304,7 +304,7 @@ catch(err){
 
 //Change Password Authentication
 userRouter.post('/user/changePassword',function(req,res){
-  console.log(req.body);
+  try{
   var myquery = { userMail : req.body.userMail};
   var changePwdToken = crypto.randomBytes(16).toString('hex');
   var newvalues = { $set : {changePasswordToken : changePwdToken}};
@@ -323,20 +323,30 @@ userRouter.post('/user/changePassword',function(req,res){
       return res.status(404).send(JSON.stringify({"description" : "Usermail doesn't exist","status":"failed"}));
     }
   });
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //Change Password Implementation
 userRouter.post('/user/newPassword',function(req,res){
-  console.log(req.body);
-  var myquery = { changePasswordToken : req.body.changePasswordToken};
-  var newvalues = { $set : {password : req.body.newPassword}};
-  User.findOneAndUpdate(myquery, newvalues, function(err, response){
-    if(response){ 
-      console.log("Password updated successfully");
-      return res.status(200).send(JSON.stringify({"description" : "Your Password updated successfully","status":"success"}));
-    }
-    return res.status(400).send(JSON.stringify({"description" : "You can't directly enter new password","status":"failed"}));
-  });
+  try{
+    var myquery = { changePasswordToken : req.body.changePasswordToken};
+    var newvalues = { $set : {password : req.body.newPassword}};
+    User.findOneAndUpdate(myquery, newvalues, function(err, response){
+      if(response){ 
+        console.log("Password updated successfully");
+        return res.status(200).send(JSON.stringify({"description" : "Your Password updated successfully","status":"success"}));
+      }
+      return res.status(400).send(JSON.stringify({"description" : "You can't directly enter new password","status":"failed"}));
+    });
+  }
+  catch(err){
+    console.log(err);
+    return res.status(500).send(err);
+  }
 });
 
 module.exports = userRouter;
