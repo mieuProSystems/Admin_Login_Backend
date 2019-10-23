@@ -5,7 +5,7 @@ const mailVerification = require('../send_verification_mail');
 const router = express.Router();
 
 //handle email registration
-router.post('/register', async function (request, response, next) {
+router.post('/user/register', async function (request, response, next) {
     console.log(request.body);
     //check the type of registration
     /* if (request.body.registration_method === 'google') {
@@ -47,7 +47,7 @@ router.post('/register', async function (request, response, next) {
 });
 
 //login function
-router.post('/login', async function (request, response) {
+router.post('/user/login', async function (request, response) {
 
     //check user exists
     const user = await UserCredentials.findOne({email: request.body.email});
@@ -91,7 +91,7 @@ router.post('/login', async function (request, response) {
 });
 
 //logout function
-router.post('/logout', async function (request, response) {
+router.post('/user/logout', async function (request, response) {
 
     //validate token
     try {

@@ -3,7 +3,7 @@ const UserCredentials = require('../datamodels/user_credentials');
 const mailVerification = require('../datamodels/mail_verification_token');
 
 
-router.get('/confirm/:id', async function (request, response) {
+router.get('/user/confirm/:id', async function (request, response) {
 
     mailVerification.findOneAndDelete({token: request.params.id}, function (err, user) {
         if (err) {
@@ -25,8 +25,10 @@ router.get('/confirm/:id', async function (request, response) {
     });
 });
 
-router.post('/verify/email', async function (request, response) {
+router.post('/user/verify/email', async function (request, response) {
     isExists = await UserCredentials.findOne({email: request.body.email});
+    console.log(request.body);
+    console.log(isExists);
     if (isExists) {
         return response.status(400).json({
             message: 'Email already Exists',
@@ -40,7 +42,7 @@ router.post('/verify/email', async function (request, response) {
     }
 });
 
-router.post('/verify/uname', async function (request, response) {
+router.post('/user/verify/uname', async function (request, response) {
     isExists = await UserCredentials.findOne({username: request.body.uname});
     if (isExists) {
         return response.status(400).json({
