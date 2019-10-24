@@ -67,10 +67,15 @@ adminRouter.post('/admin/register', async (req, res) => {
         var mailOptions = {
           to: req.body.userMail,
           subject: 'Request for registration',
-          text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication + '.\n'
+          text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication
         };
-        smtpTransport.sendMail(mailOptions, function (err) {
-
+        smtpTransport.sendMail(mailOptions, async function (err) {
+          if(err){
+            return res.send(JSON.stringify({
+              "description": "Invalid mail Id",
+              "status": "failed"
+            }));
+          }
           console.log('An e-mail has been sent to ' + req.body.userMail + ' for registration');
           return res.send(JSON.stringify({
             "description": "Your request has not been verified yet...Activation link has been sent to your entered mail again!!!",
@@ -105,10 +110,11 @@ adminRouter.post('/admin/register', async (req, res) => {
       var mailOptions = {
         to: req.body.userMail,
         subject: 'Request for registration',
-        text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication + '.\n'
+        text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication , 
       };
-      smtpTransport.sendMail(mailOptions, function (err) {
-
+      smtpTransport.sendMail(mailOptions, async function (err,info) {
+        await console.log(dsn);
+        await console.log(info);
         console.log('An e-mail has been sent to ' + req.body.userMail + ' for registration');
         return res.send(JSON.stringify({
           "description": "Activation link has been sent to your entered mail!!!",
@@ -261,54 +267,58 @@ adminRouter.post('/admin/login', function (req, res) {
 //Logout
 adminRouter.post('/admin/logout', function (req, res) {
   try {
-    var userMail = req.body.userMail;
     var loginToken = req.body.loginToken;
-    var myquery = {
-      userMail: userMail
-    };
     var newvalues = {
       $set: {
         isLogged: false
       }
     };
-
-    Admin.findOne({
-      userMail: userMail
-    }, function (err, admin) {
-      if (admin) {
-        if (admin.isLogged) {
-          Admin.updateOne(myquery, newvalues, function (err, response) {
-            console.log(userMail + " Succesfully logged out");
-            let loginquery = {
-              loginToken: loginToken
+    adminSession.findOne({
+      loginToken: loginToken
+    }, function (err, session) {
+      Admin.findOne({
+        userMail: session.userMail
+      }, function (err, admin) {
+        if (admin) {
+          if (admin.isLogged) {
+            var myquery = {
+              userMail: session.userMail
             };
-            let logoutTime = {
-              $set: {
-                logoutTime: Date(Date.now())
-              }
-            };
-            adminSession.updateOne(loginquery, logoutTime, function (err, response) {
-              if (err) console.log(err);
+            Admin.updateOne(myquery, newvalues, function (err, response) {
+              console.log(session.userMail + " Succesfully logged out");
+              let loginquery = {
+                loginToken: loginToken
+              };
+              let logoutTime = {
+                $set: {
+                  logoutTime: Date(Date.now())
+                }
+              };
+              adminSession.updateOne(loginquery, logoutTime, function (err, response) {
+                if (err) console.log(err);
+                else{
+                return res.status(200).send(JSON.stringify({
+                  "description": "Succesfully logged out!",
+                  "status": "success"
+              }));
+            }
             });
-            return res.status(200).send(JSON.stringify({
-              "description": "Succesfully logged out!",
-              "status": "success"
+            });
+          } else {
+            console.log(session.userMail + " was not logged in");
+            return res.status(404).send(JSON.stringify({
+              "description": "You're not logged in...!",
+              "status": "failed"
             }));
-          });
+          }
         } else {
-          console.log(userMail + " was not logged in");
+          console.log(session.userMail + " is not a registered admin");
           return res.status(404).send(JSON.stringify({
-            "description": "You're not logged in...!",
+            "description": "You're not a registered admin...please register!",
             "status": "failed"
           }));
         }
-      } else {
-        console.log(userMail + " is not a registered admin");
-        return res.status(404).send(JSON.stringify({
-          "description": "You're not a registered admin...please register!",
-          "status": "failed"
-        }));
-      }
+      });
     });
   } catch (err) {
     console.log(err);
@@ -655,8 +665,9 @@ adminRouter.get('/home/getVideos', function (req, res) {
 });
 
 //to get admin details
-adminRouter.get('/home/accountInformation/getAdminDetails', function (req, res) {
+adminRouter.post('/home/accountInformation/getAdminDetails', function (req, res) {
   try {
+    var loginToken = req.body.loginToken;
     //Temporarily for Single admin only
     var usersProjection = {
       __v: false,
@@ -669,13 +680,18 @@ adminRouter.get('/home/accountInformation/getAdminDetails', function (req, res) 
       changePasswordToken: false
     };
 
-    Admin.findOne({
-      firstName: "Vignesh"
-    }, usersProjection, function (err, admin) {
-      if (err) return next(err);
-      console.log("Get Admin details request processed successfully");
-      // console.log(admin);
-      return res.status(200).send(JSON.stringify(admin));
+    adminSession.findOne({
+      loginToken: loginToken
+    }, function (err, session) {
+      Admin.findOne({
+        userMail: session.userMail
+      }, usersProjection, function (err, admin) {
+        if (err) return next(err);
+        console.log("Get Admin details request processed successfully");
+        //console.log(admin);
+        return res.status(200).send(JSON.stringify(admin));
+      });
+
     });
   } catch (err) {
     console.log(err);
