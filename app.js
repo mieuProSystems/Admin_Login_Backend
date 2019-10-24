@@ -10,7 +10,7 @@ const userVerificationRoutes = require('./routes/user_verification');
 dotenv.config();
 
 //Establishing the connection to the database
-mongoose.connect('mongodb://localhost/LoginApp', {
+mongoose.connect('mongodb+srv://user1:pwd123@cluster0-vhws5.mongodb.net/test?retryWrites=true&w=majority', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     useCreateIndex: true,

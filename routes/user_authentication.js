@@ -36,7 +36,7 @@ router.post('/user/register', async function (request, response, next) {
     try {
         await user_credits.save();
         //send account verification email
-        // mailVerification.verifyMail(request.body.userId, request.body.email, request.headers.host);
+        mailVerification.verifyMail(request.body.userId, request.body.email, request.headers.host);
         return response.status(200).json({
             token: request.body.token,
             status: 'success'
@@ -82,12 +82,14 @@ router.post('/user/login', async function (request, response) {
         )
     }
     //if token already exists
-    return response.json(
-        {
-            'token': user.token,
-            'status': 2
-        }
-    )
+    if(user.isVerified){
+        console.log("Logged in");
+        return response.send(JSON.stringify({'token':user.token,'status' : 2}));     
+    }
+    else{
+        console.log("mail has not been verified");
+        return response.send(JSON.stringify({message :'Mail-id has not been verified yet',status : 3}));
+    }
 });
 
 //logout function

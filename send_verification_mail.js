@@ -19,7 +19,7 @@ var sendVerificationMail = function (userId, email, redirect_host) {
     });
 
     //create the verification link
-    var url = 'http://' + redirect_host + '/confirm/' + token;
+    var url = 'http://' + redirect_host + '/user/confirm/' + token;
 
     //create mail details
     const mailDetails = {
