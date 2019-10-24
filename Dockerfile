@@ -1,7 +1,7 @@
 FROM node:10
 
 # Create app directory
-WORKDIR C:/Users/R.Mohan Raj/Documents/GitHub/Admin_Login_Backend/app
+WORKDIR /app
 
 # Install app dependencies
 # A wildcard is used to ensure both package.json AND package-lock.json are copied
