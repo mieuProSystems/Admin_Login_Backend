@@ -113,8 +113,6 @@ adminRouter.post('/admin/register', async (req, res) => {
         text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication , 
       };
       smtpTransport.sendMail(mailOptions, async function (err,info) {
-        await console.log(dsn);
-        await console.log(info);
         console.log('An e-mail has been sent to ' + req.body.userMail + ' for registration');
         return res.send(JSON.stringify({
           "description": "Activation link has been sent to your entered mail!!!",
@@ -341,7 +339,7 @@ adminRouter.post('/admin/forgotPassword', function (req, res, next) {
           userMail: req.body.userMail
         }, function (err, admin) {
           if (!admin) {
-            console.log('No account with that email address exists.');
+            console.log("Mail-Id doesn't exist...Create a new one!");
             return res.send(JSON.stringify({
               "description": "Mail-Id doesn't exist...Create a new one!",
               "status": "failed"
@@ -444,18 +442,30 @@ adminRouter.post('/admin/newPassword', function (req, res) {
         password: req.body.newPassword
       }
     };
-    Admin.findOneAndUpdate(myquery, newvalues, function (err, response) {
-      if (response) {
-        console.log("Password updated successfully");
-        return res.status(200).send(JSON.stringify({
-          "description": "Your Password updated successfully",
-          "status": "success"
-        }));
+    Admin.findOne({changePasswordToken: req.body.changePasswordToken},function(err,admin){
+      if(admin){
+        if(admin.password === req.body.newPassword){
+          return res.status(200).send(JSON.stringify({
+            "description": "No change in the password...Enter a new One",
+            "status": "failed"
+          }));
+        }
+        else{
+          Admin.findOneAndUpdate(myquery, newvalues, function (err, response) {
+            if (response) {
+              console.log("Password updated successfully");
+              return res.status(200).send(JSON.stringify({
+                "description": "Your Password updated successfully",
+                "status": "success"
+              }));
+            }
+            return res.status(400).send(JSON.stringify({
+              "description": "You can't directly enter new password",
+              "status": "failed"
+            }));
+          });
+        }
       }
-      return res.status(400).send(JSON.stringify({
-        "description": "You can't directly enter new password",
-        "status": "failed"
-      }));
     });
   } catch (err) {
     console.log(err);
