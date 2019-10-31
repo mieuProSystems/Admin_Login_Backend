@@ -13,6 +13,7 @@ router.get('/user/confirm/:id', async function (request, response) {
                 message: 'invalid link'
             })
         }
+        if(user){
         UserCredentials.findOneAndUpdate({userId: user.userId}, {isVerified: true}, function (err) {
             if (err) {
                 console.log(err);
@@ -22,6 +23,13 @@ router.get('/user/confirm/:id', async function (request, response) {
                 message: 'email verified'
             })
         });
+    }
+    else{
+        return response.json({
+            status: 'failure',
+            message: 'invalid link'
+        })
+    }
     });
 });
 

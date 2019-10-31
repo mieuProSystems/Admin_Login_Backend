@@ -7,7 +7,7 @@ var Feedback = require('../lib/feedbackSchema');
 var async = require('async');
 var crypto = require('crypto');
 var nodemailer = require('nodemailer');
-var _ = require('underscore');
+var underscore = require('underscore');
 var moment = require('moment');
 var dotenv = require('dotenv');
 dotenv.config();
@@ -30,14 +30,14 @@ adminRouter.post('/admin/register', async (req, res) => {
     let admin = await Admin.findOne({
       userMail: req.body.userMail
     });
-    if (admin) {
-      if (admin.isVerified) {
+    if (admin) { //Checks whether mail exist      
+      if (admin.isVerified) { //If exist and verified
         console.log('Usermail ' + req.body.userMail + ' already exists');
         return res.send(JSON.stringify({
           "description": "Your email is already registered...Please login",
           "status": "failed"
         }));
-      } else {
+      } else { //If exist but not verified
         let myquery = {
           userMail: admin.userMail
         };
@@ -70,7 +70,7 @@ adminRouter.post('/admin/register', async (req, res) => {
           text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication
         };
         smtpTransport.sendMail(mailOptions, async function (err) {
-          if(err){
+          if (err) {
             return res.send(JSON.stringify({
               "description": "Invalid mail Id",
               "status": "failed"
@@ -83,7 +83,7 @@ adminRouter.post('/admin/register', async (req, res) => {
           }));
         });
       }
-    } else {
+    } else { //if it is a new mail-id
       newuser.firstName = firstName;
       newuser.lastName = lastName;
       newuser.gender = gender;
@@ -110,9 +110,9 @@ adminRouter.post('/admin/register', async (req, res) => {
       var mailOptions = {
         to: req.body.userMail,
         subject: 'Request for registration',
-        text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication , 
+        text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication,
       };
-      smtpTransport.sendMail(mailOptions, async function (err,info) {
+      smtpTransport.sendMail(mailOptions, async function (err, info) {
         console.log('An e-mail has been sent to ' + req.body.userMail + ' for registration');
         return res.send(JSON.stringify({
           "description": "Activation link has been sent to your entered mail!!!",
@@ -144,27 +144,24 @@ adminRouter.get('/admin/confirmation/*', async (req, res, next) => {
     console.log(tokenArray);
     console.log(token);
     Admin.findOne({
-      token: token
+      token: token   //Checking whether it is a valid token
     }, function (err, admin) {
       console.log(admin);
-      if (admin) {
-
-        if (!admin.isVerified) {
+      if (admin) { //If it is a valid token
+        if (!admin.isVerified) { //And hasn't been verified yet
           Admin.updateOne(myquery, newvalues, function (err, response) {
             console.log("Registration Success for " + admin.userMail);
             return res.sendFile('./html/register-success.html', {
               root: __dirname
             });
-            //return res.status(200).send(JSON.stringify({"description":"Registration Success!!!", "status" : "success","token" : admin.token}));      
           });
-        } else {
+        } else { //If it's been verified already
           console.log("Email " + admin.userMail + " is already registered");
           return res.sendFile('./html/already-register.html', {
             root: __dirname
           });
-          //return res.status(200).send(JSON.stringify({"description":"You're already registered!..Please login", "status" : "failed"}));
         }
-      } else {
+      } else {//If it is not a valid token
         console.log("Invalid Link");
         return res.status(200).send(JSON.stringify({
           "description": "Link Expired...please try again",
@@ -194,23 +191,22 @@ adminRouter.post('/admin/login', function (req, res) {
     };
 
     Admin.findOne({
-      userMail: userMail
+      userMail: userMail  //Checking whether mail-id exist
     }, function (err, admin) {
-      //console.log(admin);
       if (err) {
         console.log("error");
       }
 
-      if (admin) {
-        if (admin.isVerified) {
-          if (admin.password != password) {
+      if (admin) { //If account exists
+        if (admin.isVerified) { //and verified
+          if (admin.password != password) { //If passwords don't match
             console.log("Incorrect Password... Please try again!");
             return res.send(JSON.stringify({
               "description": "Incorrect Password... Please try again!",
               "status": "failed"
             }));
-          } else {
-            if (admin.isLogged) {
+          } else { //If passwords match
+            if (admin.isLogged) { //But already signed in
               console.log("Already Logged in other device!");
               return res.send(JSON.stringify({
                 "description": "Already Logged in other device!",
@@ -218,9 +214,9 @@ adminRouter.post('/admin/login', function (req, res) {
               }));
             } else {
               Admin.updateOne(myquery, newvalues, function (err, response) {
-                console.log("Login Success");
+                console.log("Login Success for " + admin.userMail );
                 sessionToken = crypto.randomBytes(16).toString('hex');
-                var loginsession = new adminSession();
+                var loginsession = new adminSession(); //Creating Session Log
                 loginsession.userMail = admin.userMail;
                 loginsession.firstName = admin.firstName;
                 loginsession.lastName = admin.lastName;
@@ -241,7 +237,7 @@ adminRouter.post('/admin/login', function (req, res) {
             }
           } //
         } else {
-          console.log(admin.userMail + "Usermail is not verified");
+          console.log(admin.userMail + " is not verified");
           return res.send(JSON.stringify({
             "description": "Your Mail-id has not been verified yet...Please Verify",
             "status": "failed"
@@ -272,13 +268,13 @@ adminRouter.post('/admin/logout', function (req, res) {
       }
     };
     adminSession.findOne({
-      loginToken: loginToken
+      loginToken: loginToken  //Checking whether token is vaild
     }, function (err, session) {
       Admin.findOne({
         userMail: session.userMail
       }, function (err, admin) {
-        if (admin) {
-          if (admin.isLogged) {
+        if (admin) { //If account exists
+          if (admin.isLogged) { //And logged in
             var myquery = {
               userMail: session.userMail
             };
@@ -294,13 +290,13 @@ adminRouter.post('/admin/logout', function (req, res) {
               };
               adminSession.updateOne(loginquery, logoutTime, function (err, response) {
                 if (err) console.log(err);
-                else{
-                return res.status(200).send(JSON.stringify({
-                  "description": "Succesfully logged out!",
-                  "status": "success"
-              }));
-            }
-            });
+                else {
+                  return res.status(200).send(JSON.stringify({
+                    "description": "Succesfully logged out!",
+                    "status": "success"
+                  }));
+                }
+              });
             });
           } else {
             console.log(session.userMail + " was not logged in");
@@ -309,10 +305,10 @@ adminRouter.post('/admin/logout', function (req, res) {
               "status": "failed"
             }));
           }
-        } else {
+        } else { //if account doesn't exist 
           console.log(session.userMail + " is not a registered admin");
           return res.status(404).send(JSON.stringify({
-            "description": "You're not a registered admin...please register!",
+            "description": "You're not a registered admin...Please register!",
             "status": "failed"
           }));
         }
@@ -327,14 +323,14 @@ adminRouter.post('/admin/logout', function (req, res) {
 //Forgot password
 adminRouter.post('/admin/forgotPassword', function (req, res, next) {
   try {
-    async.waterfall([
-      function (done) {
+    async.waterfall([ // to run an array of functions in series
+      function (done) { //Creating Token
         crypto.randomBytes(20, function (err, buf) {
           var token = buf.toString('hex');
           done(err, token);
         });
       },
-      function (token, done) {
+      function (token, done) { //Passing the token to the next function
         Admin.findOne({
           userMail: req.body.userMail
         }, function (err, admin) {
@@ -344,7 +340,6 @@ adminRouter.post('/admin/forgotPassword', function (req, res, next) {
               "description": "Mail-Id doesn't exist...Create a new one!",
               "status": "failed"
             }));
-            // return res.redirect('/forgot');
           }
 
           admin.resetPasswordToken = token;
@@ -355,7 +350,7 @@ adminRouter.post('/admin/forgotPassword', function (req, res, next) {
           });
         });
       },
-      function (token, admin, done) {
+      function (admin) { //Passing the admin details to send the mail
         var smtpTransport = nodemailer.createTransport({
           service: 'Gmail',
           auth: {
@@ -379,7 +374,6 @@ adminRouter.post('/admin/forgotPassword', function (req, res, next) {
       }
     ], function (err) {
       if (err) return next(err);
-      res.redirect('/forgot');
     });
   } catch (err) {
     console.log(err);
@@ -442,15 +436,16 @@ adminRouter.post('/admin/newPassword', function (req, res) {
         password: req.body.newPassword
       }
     };
-    Admin.findOne({changePasswordToken: req.body.changePasswordToken},function(err,admin){
-      if(admin){
-        if(admin.password === req.body.newPassword){
+    Admin.findOne({
+      changePasswordToken: req.body.changePasswordToken
+    }, function (err, admin) {
+      if (admin) {
+        if (admin.password === req.body.newPassword) {
           return res.status(200).send(JSON.stringify({
             "description": "No change in the password...Enter a new One",
             "status": "failed"
           }));
-        }
-        else{
+        } else {
           Admin.findOneAndUpdate(myquery, newvalues, function (err, response) {
             if (response) {
               console.log("Password updated successfully");
@@ -484,14 +479,12 @@ adminRouter.post('/home/add/channelVideos', function (req, res) {
     var video_titles = req.body.videoTitles;
     var video_thumbnails = req.body.videoThumbnails;
     var changes_in_videos;
-    //console.log(req.body);
+
     Channel.findOne({
       channelId: channel_id
     }, function (err, channel) {
-      //console.log(channel);
       if (channel) {
-        changes_in_videos = _.difference(video_titles, channel.videoTitles);
-        //console.log(changes_in_videos.toString());
+        changes_in_videos = underscore.difference(video_titles, channel.videoTitles);
         if (!changes_in_videos.toString()) {
           console.log("No changes in channel");
           return res.status(500).send(JSON.stringify({
@@ -551,7 +544,7 @@ adminRouter.post('/home/remove/videos', function (req, res) {
       channelId: channel_id
     }, function (err, admin) {
       if (admin) {
-        var invalid_elements = _.difference(videos_id, admin.videosIds);
+        var invalid_elements = underscore.difference(videos_id, admin.videosIds);
         if (invalid_elements) {
           console.log("invalid elements found--> " + invalid_elements);
           return res.status(404).send(JSON.stringify({
