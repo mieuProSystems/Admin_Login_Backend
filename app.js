@@ -7,6 +7,16 @@ const dotenv = require('dotenv');
 const userAuthenticationRoutes = require('./routes/user_authentication');
 const userVerificationRoutes = require('./routes/user_verification');
 
+const MongoClient = require("mongodb").MongoClient;
+const assert = require("assert");
+
+const pipeline = [
+    {
+      $project: { documentKey: false }
+    }
+  ];
+
+
 dotenv.config();
 
 //Establishing the connection to the database
@@ -16,6 +26,23 @@ mongoose.connect('mongodb+srv://user1:pwd123@cluster0-vhws5.mongodb.net/test?ret
     useCreateIndex: true,
     useFindAndModify: false
 });
+
+MongoClient.connect("mongodb+srv://user1:pwd123@cluster0-vhws5.mongodb.net/test?retryWrites=true&w=majority",{
+useNewUrlParser: true,
+useUnifiedTopology: true
+}).then(client => {
+  console.log("Connected correctly to server");
+  // specify db and collections
+  const db = client.db("test");
+  const collection = db.collection("user_credentials");
+
+  const changeStream = collection.watch(pipeline);
+  // start listen to changes
+  changeStream.on("change", function(change) {
+    console.log(change);
+  });
+});
+
 
 //Init App
 var app = express();
@@ -38,7 +65,6 @@ var routes = require('./routes/adminIndex');
 //var user = require('./routes/userIndex');
 //app.use('/', user);
 app.use('/', routes);
-
 
 //Set Port
 app.set('port', (process.env.PORT || 3000));

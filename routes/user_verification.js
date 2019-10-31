@@ -18,10 +18,9 @@ router.get('/user/confirm/:id', async function (request, response) {
             if (err) {
                 console.log(err);
             }
-            return response.json({
-                status: 'success',
-                message: 'email verified'
-            })
+            return response.sendFile('./html/register-success.html', {
+                root: __dirname
+              })
         });
     }
     else{

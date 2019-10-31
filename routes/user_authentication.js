@@ -4,6 +4,12 @@ const UserCredentials = require('../datamodels/user_credentials');
 const mailVerification = require('../send_verification_mail');
 const router = express.Router();
 
+function toTitleCase(str) {
+    return str.replace(/\w\S*/g, function(txt){
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+}
+
 //handle email registration
 router.post('/user/register', async function (request, response, next) {
     console.log(request.body);
@@ -19,6 +25,7 @@ router.post('/user/register', async function (request, response, next) {
             status: 'failure'
         });
     }
+    request.body.username = toTitleCase(request.body.username);
     //check the username already exists
     const username_exists = await UserCredentials.findOne({username: request.body.username});
     if (username_exists) {

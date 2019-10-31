@@ -2,6 +2,7 @@ var express = require('express');
 var adminRouter = express.Router();
 var Admin = require('../lib/adminSchema');
 var adminSession = require('../lib/adminSessionSchema');
+var UserCredentials = require('../datamodels/user_credentials');
 var Channel = require('../lib/channelSchema');
 var Feedback = require('../lib/feedbackSchema');
 var async = require('async');
@@ -14,9 +15,16 @@ dotenv.config();
 var firstName, lastName, userMail, password, gender, mobileNo, sessionToken;
 var numberOfTimes = 0;
 
+function toTitleCase(str) {
+  return str.replace(/\w\S*/g, function(txt){
+      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+  });
+}
+
 //Register page
 adminRouter.post('/admin/register', async (req, res) => {
   try {
+    req.body.firstName = toTitleCase(req.body.firstName);
     firstName = req.body.firstName;
     lastName = req.body.lastName;
     gender = req.body.gender;
@@ -300,14 +308,14 @@ adminRouter.post('/admin/logout', function (req, res) {
             });
           } else {
             console.log(session.userMail + " was not logged in");
-            return res.status(404).send(JSON.stringify({
+            return res.send(JSON.stringify({
               "description": "You're not logged in...!",
               "status": "failed"
             }));
           }
         } else { //if account doesn't exist 
           console.log(session.userMail + " is not a registered admin");
-          return res.status(404).send(JSON.stringify({
+          return res.send(JSON.stringify({
             "description": "You're not a registered admin...Please register!",
             "status": "failed"
           }));
@@ -413,7 +421,7 @@ adminRouter.post('/admin/changePassword', function (req, res) {
           }));
         }
       } else {
-        return res.status(404).send(JSON.stringify({
+        return res.send(JSON.stringify({
           "description": "Usermail doesn't exist",
           "status": "failed"
         }));
@@ -547,7 +555,7 @@ adminRouter.post('/home/remove/videos', function (req, res) {
         var invalid_elements = underscore.difference(videos_id, admin.videosIds);
         if (invalid_elements) {
           console.log("invalid elements found--> " + invalid_elements);
-          return res.status(404).send(JSON.stringify({
+          return res.send(JSON.stringify({
             "description": "invalid elements found--> " + invalid_elements,
             "status": "failed"
           }));
@@ -569,7 +577,7 @@ adminRouter.post('/home/remove/videos', function (req, res) {
           });
         }
       } else {
-        return res.status(404).send(JSON.stringify({
+        return res.send(JSON.stringify({
           "description": "Channel doesn't exist",
           "status": "failed"
         }));
@@ -600,7 +608,7 @@ adminRouter.post('/home/remove/channel', function (req, res) {
           }));
         });
       } else
-        return res.status(404).send(JSON.stringify({
+        return res.send(JSON.stringify({
           "description": "Channel doesn't exist",
           "status": "failed"
         }));
@@ -612,30 +620,39 @@ adminRouter.post('/home/remove/channel', function (req, res) {
 });
 
 //Remove a registered admin
-adminRouter.post('/admin/removeUser', function (req, res) {
+adminRouter.post('/home/admin/removeAdmin', function (req, res) {
   try {
     var user_mail = req.body.userMail;
     Admin.findOne({
       userMail: user_mail
     }, function (err, admin) {
-      if (admin) {
+      if(admin){
+      if (admin.isLogged) {
+        console.log(user_mail + " is logged in...You can't remove this account right now");
+        return res.send(JSON.stringify({
+          "description": user_mail + " is logged in...You can't remove this account right now",
+          "status": "failed"
+        }));
+      } else {
         Admin.deleteOne({
           userMail: user_mail
         }, function (err, obj) {
           if (err) throw err;
-          console.log(user_mail + " deleted successfully");
+          console.log(user_mail + " removed successfully");
           return res.status(200).send(JSON.stringify({
-            "description": "Admin Info Deleted Successfully",
+            "description": user_mail + " Admin Account removed Successfully",
             "status": "success"
           }));
         });
-      } else {
-        console.log(user_mail + " doesn't exist to remove");
-        return res.status(404).send(JSON.stringify({
-          "description": "Usermail doesn't exist",
-          "status": "failed"
-        }));
       }
+    }
+    else{
+      console.log(user_mail + " doesn't exist...please refresh the page");
+      return res.send(JSON.stringify({
+        "description": user_mail + " doesn't exist...please refresh the page",
+        "status": "failed"
+      }));
+    }
     });
   } catch (err) {
     console.log(err);
@@ -774,6 +791,85 @@ adminRouter.get('/home/admin/getFeedback', function (req, res) {
       Feedback.updateMany(myquery, newvalues, function (err, response) {});
       return res.status(200);
     });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send(err);
+  }
+});
+
+//To get details of users registered through App
+adminRouter.get('/home/admin/getUserDetails',function(req,res){
+  try {
+    var usersProjection = {
+      __v: false,
+      _id: false,
+      registrationMethod: false,
+      //isVerified : false,
+      password : false,
+      token: false,
+      userId : false
+    };
+
+    UserCredentials.find({}, usersProjection).sort('username').exec(function (err, user) {
+      if (err) return next(err);
+      console.log("Get User Details processed successfully ");
+      return res.status(200).send(JSON.stringify(user));
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send(err);
+  }
+});
+
+//To delete a user registered through App
+adminRouter.post('/home/admin/removeUser',function(req,res){
+  try {
+    var user_mail = req.body.userMail;
+    UserCredentials.findOneAndDelete({
+      email : user_mail
+    }, function (err, user) {
+      if (err) throw err;
+      if (user) {
+          console.log(user_mail + " deleted successfully from App Database");
+          return res.status(200).send(JSON.stringify({
+            "description": "User Info Deleted Successfully",
+            "status": "success"
+          }));
+      } else {
+        console.log(user_mail + " doesn't exist to remove");
+        return res.send(JSON.stringify({
+          "description": "Usermail doesn't exist",
+          "status": "failed"
+        }));
+      }
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send(err);
+  }
+});
+
+//To get details about all admins
+adminRouter.get('/home/admin/getAdminDetails', function (req, res) {
+  try {
+    //Temporarily for Single admin only
+    var usersProjection = {
+      __v: false,
+      _id: false,
+      //isLogged: false,
+      isVerified: false,
+      token: false, //Not needed for multiple admins
+      createdAt: false,
+      password: false,
+      changePasswordToken: false
+    };
+
+      Admin.find({}, usersProjection, function (err, admin) {
+        if (err) return next(err);
+        console.log("Get Admin details request processed successfully");
+        //console.log(admin);
+        return res.status(200).send(JSON.stringify(admin));
+      });
   } catch (err) {
     console.log(err);
     return res.status(500).send(err);
