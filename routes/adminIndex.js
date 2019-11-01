@@ -9,7 +9,7 @@ var async = require('async');
 var crypto = require('crypto');
 var nodemailer = require('nodemailer');
 var underscore = require('underscore');
-var moment = require('moment');
+var moment = require('moment-timezone');
 var dotenv = require('dotenv');
 dotenv.config();
 var firstName, lastName, userMail, password, gender, mobileNo, sessionToken;
@@ -674,6 +674,7 @@ adminRouter.get('/home/getVideos', function (req, res) {
     };
 
     Channel.find({}, usersProjection).sort('-currentDate').sort('-currentTime').exec(function (err, channel) {
+      
       if (err) return next(err);
       console.log("Get Video request processed successfully " + numberOfTimes);
       return res.status(200).send(JSON.stringify(channel));
@@ -685,7 +686,7 @@ adminRouter.get('/home/getVideos', function (req, res) {
 });
 
 //to get admin details
-adminRouter.post('/home/accountInformation/getAdminDetails', function (req, res) {
+adminRouter.post('/home/myProfile/getDetails', function (req, res) {
   try {
     var loginToken = req.body.loginToken;
     //Temporarily for Single admin only
@@ -707,7 +708,7 @@ adminRouter.post('/home/accountInformation/getAdminDetails', function (req, res)
         userMail: session.userMail
       }, usersProjection, function (err, admin) {
         if (err) return next(err);
-        console.log("Get Admin details request processed successfully");
+        console.log("Get Profile request processed successfully");
         //console.log(admin);
         return res.status(200).send(JSON.stringify(admin));
       });
@@ -719,7 +720,8 @@ adminRouter.post('/home/accountInformation/getAdminDetails', function (req, res)
   }
 });
 
-adminRouter.post('/admin/viewSessions', function (req, res) {
+//To get login sessions
+adminRouter.post('/admin/getLoginSessions', function (req, res) {
   try {
     var usersProjection = {
       __v: false,
@@ -743,25 +745,38 @@ adminRouter.post('/admin/viewSessions', function (req, res) {
   }
 });
 
-//to get feedback from admin
-adminRouter.get('/home/admin/feedback', function (req, res) {
+//to get feedback from user
+adminRouter.get('/user/feedback', function (req, res) {
   try {
     var userMail = req.body.userMail;
     var feedback = req.body.feedback;
+    var userName = req.body.userName;
 
     var new_feedback = new Feedback();
 
     new_feedback.userMail = userMail;
     new_feedback.feedback = feedback;
-    new_feedback.givenDate = moment().format("MMM Do YYYY");
-    new_feedback.givenTime = moment().format('hh:mm:ss a');
-    new_feedback.save();
-    console.log("Feedback saved successfully");
-
-    return res.status(200).send(JSON.stringify({
-      "description": "Feedback has been saved successfully",
-      "status": "success"
-    }));
+    new_feedback.userName = userName;
+    new_feedback.dateTimeString = new Date().toLocaleString("en-US",{timeZone:'Asia/kolkata'});
+    new_feedback.givenDate = moment().format("DD/MM/YYYY");
+    new_feedback.givenTime = moment().utcOffset("+05:30").format('HH:mm:ss');
+    new_feedback.save(function(err,feedback){
+      //if(err) throw err;
+      if (feedback){
+        console.log("Feedback saved successfully");
+        return res.status(200).send(JSON.stringify({
+          "description": "Feedback has been saved successfully",
+          "status": "success"
+        }));
+      }
+      else{
+        console.log("Error in saving feedback");
+        return res.status(200).send(JSON.stringify({
+          "description": "Error in saving feedback",
+          "status": "failed"
+        }));
+      }
+    });
   } catch (err) {
     console.log(err);
     return res.status(500).send(err);
@@ -775,6 +790,33 @@ adminRouter.get('/home/admin/getFeedback', function (req, res) {
       __v: false,
       _id: false
     };
+
+    Feedback.find({},usersProjection).sort('-givenDate').sort('-givenTime').exec(function (err, feedback) {
+      if (err) return next(err);
+      console.log("Feedbacks sent successfully");
+      res.send(JSON.stringify(feedback));
+      return res.status(200);
+    });
+
+    // Feedback.find({}, usersProjection, function(err, feedback){
+    //   const dateFormat = (date, time) => new Date (date+time);
+    //   feedback.sort((a,b)=>dateFormat(a.givenDate,a.givenTime)-dateFormat(b.givenDate-b.givenTime));
+    //   feedback.reverse();
+    //   console.log(feedback);
+    //    res.send(JSON.stringify(feedback));
+    //    return res.status(200);
+
+    // });
+
+  } catch (err) {
+    console.log(err);
+    return res.status(500).send(err);
+  }
+});
+
+//Admin read the feedback confirmation
+adminRouter.get('/home/admin/readFeedback',function(req,res){
+  try{
     var myquery = {
       read: false
     };
@@ -783,15 +825,18 @@ adminRouter.get('/home/admin/getFeedback', function (req, res) {
         read: true
       }
     };
-
-    Feedback.find({}, usersProjection, function (err, feedback) {
-      if (err) return next(err);
-      console.log("Feedbacks sent successfully");
-      res.send(JSON.stringify(feedback));
-      Feedback.updateMany(myquery, newvalues, function (err, response) {});
-      return res.status(200);
+    Feedback.updateMany(myquery, newvalues, function (err, response) {
+      //console.log(response);
+      if(response.nModified != 0){
+        console.log("Admin read Feedbacks");
+        return res.send(JSON.stringify({"description" : "Admin read Feedbacks", "status" : "success"}));
+      }
+      else{
+        console.log("All feedbacks are already read");
+        return res.send(JSON.stringify({"description" : "All feedbacks are already read", "status" : "success"}));
+      }
     });
-  } catch (err) {
+  }catch(err){
     console.log(err);
     return res.status(500).send(err);
   }
@@ -830,9 +875,9 @@ adminRouter.post('/home/admin/removeUser',function(req,res){
     }, function (err, user) {
       if (err) throw err;
       if (user) {
-          console.log(user_mail + " deleted successfully from App Database");
+          console.log(user_mail + " removed successfully from App Database");
           return res.status(200).send(JSON.stringify({
-            "description": "User Info Deleted Successfully",
+            "description": "User Info Removed Successfully",
             "status": "success"
           }));
       } else {
@@ -859,6 +904,7 @@ adminRouter.get('/home/admin/getAdminDetails', function (req, res) {
       //isLogged: false,
       isVerified: false,
       token: false, //Not needed for multiple admins
+      gender :false,
       createdAt: false,
       password: false,
       changePasswordToken: false

@@ -31,7 +31,6 @@ MongoClient.connect("mongodb+srv://user1:pwd123@cluster0-vhws5.mongodb.net/test?
 useNewUrlParser: true,
 useUnifiedTopology: true
 }).then(client => {
-  console.log("Connected correctly to server");
   // specify db and collections
   const db = client.db("test");
   const collection = db.collection("user_credentials");
