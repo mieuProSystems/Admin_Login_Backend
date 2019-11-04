@@ -3,6 +3,7 @@ const Jwt = require('jsonwebtoken');
 const UserCredentials = require('../datamodels/user_credentials');
 const mailVerification = require('../send_verification_mail');
 const router = express.Router();
+var kickbox = require('kickbox').client('live_9578ccacf704f813f66f0aa075e210c7b88835458d7a793065adde401dcca649').kickbox();
 
 function toTitleCase(str) {
     return str.replace(/\w\S*/g, function(txt){
@@ -12,46 +13,59 @@ function toTitleCase(str) {
 
 //handle email registration
 router.post('/user/register', async function (request, response, next) {
-    console.log(request.body);
-    //check the type of registration
-    /* if (request.body.registration_method === 'google') {
-         next('route');
-     } */
-    //check email already exists
-    const email_exists = await UserCredentials.findOne({email: request.body.email});
-    if (email_exists) {
-        return response.status(400).json({
-            message: 'Email already Exists',
-            status: 'failure'
-        });
-    }
-    request.body.username = toTitleCase(request.body.username);
-    //check the username already exists
-    const username_exists = await UserCredentials.findOne({username: request.body.username});
-    if (username_exists) {
-        return response.status(400).json({
-            message: 'Username already Exists',
-            status: 'failure'
-        });
-    }
-    //generate user id
-    request.body.userId = 'user' + Math.random().toString(36).substr(2, 6);
-    //generate user token
-    request.body.token = Jwt.sign({id: request.body.userId}, process.env.TOKEN_SECRET);
-    //create a new user
-    const user_credits = new UserCredentials(request.body);
-    try {
-        await user_credits.save();
-        //send account verification email
-        mailVerification.verifyMail(request.body.userId, request.body.email, request.headers.host);
-        return response.status(200).json({
-            token: request.body.token,
-            status: 'success'
-        })
-    } catch (error) {
-        return response.status(400).send(error);
-    }
-});
+    kickbox.verify(request.body.email, async function (err, res) {
+        var validMail = res.body.result;
+        if (validMail === 'undeliverable') {
+          console.log("Register-- mail-id is invalid " + request.body.email);
+          return response.send(JSON.stringify({
+            message : "Email you entered doesn't exist...Enter a valid one",
+            status : "failure"
+          }));
+        } else if (validMail === 'risky') {
+          console.log("Register-- mail-id is Temporary mail " + request.body.email);
+          return response.send(JSON.stringify({
+            message : "Don't enter Temporary mail-ids...Enter a valid one",
+            status : "failure"
+          }));
+        } else if (validMail === 'deliverable') {
+          console.log(request.body);
+          //check email already exists
+          const email_exists = await UserCredentials.findOne({email: request.body.email});
+          if (email_exists) {
+              return response.status(400).json({
+                  message: 'Email already Exists',
+                  status: 'failure'
+              });
+          }
+          request.body.username = toTitleCase(request.body.username);
+          //check the username already exists
+          const username_exists = await UserCredentials.findOne({username: request.body.username});
+          if (username_exists) {
+              return response.status(400).json({
+                  message: 'Username already Exists',
+                  status: 'failure'
+              });
+          }
+          //generate user id
+          request.body.userId = 'user' + Math.random().toString(36).substr(2, 6);
+          //generate user token
+          request.body.token = Jwt.sign({id: request.body.userId}, process.env.TOKEN_SECRET);
+          //create a new user
+          const user_credits = new UserCredentials(request.body);
+          try {
+              await user_credits.save();
+              //send account verification email
+              mailVerification.verifyMail(request.body.userId, request.body.email, request.headers.host);
+              return response.status(200).json({
+                  token: request.body.token,
+                  status: 'success'
+              })
+          } catch (error) {
+              return response.status(400).send(error);
+        }
+      }
+    });
+  });
 
 //login function
 router.post('/user/login', async function (request, response) {
@@ -90,6 +104,7 @@ router.post('/user/login', async function (request, response) {
     }
     //if token already exists
     if(user.isVerified){
+        console.log(request.connection.remoteAddress);
         console.log("Logged in");
         return response.send(JSON.stringify({'token':user.token,'status' : 2}));     
     }

@@ -11,6 +11,7 @@ var nodemailer = require('nodemailer');
 var underscore = require('underscore');
 var moment = require('moment-timezone');
 var dotenv = require('dotenv');
+var kickbox = require('kickbox').client('live_9578ccacf704f813f66f0aa075e210c7b88835458d7a793065adde401dcca649').kickbox();
 dotenv.config();
 var firstName, lastName, userMail, password, gender, mobileNo, sessionToken;
 var numberOfTimes = 0;
@@ -23,116 +24,143 @@ function toTitleCase(str) {
 
 //Register page
 adminRouter.post('/admin/register', async (req, res) => {
-  try {
-    req.body.firstName = toTitleCase(req.body.firstName);
-    firstName = req.body.firstName;
-    lastName = req.body.lastName;
-    gender = req.body.gender;
-    userMail = req.body.userMail;
-    password = req.body.password;
-    mobileNo = req.body.mobileNo;
+      try {
+        kickbox.verify(req.body.userMail, async function (err, response) {
+            var validMail = response.body.result;
+            if (validMail === 'undeliverable') {
+              console.log("Register-- mail-id is invalid " + req.body.userMail);
+              return res.send(JSON.stringify({
+                "description": "Email you entered doesn't exist...Enter a valid one",
+                "status": "failed"
+              }));
+            } else if (validMail === 'risky') {
+              console.log("Register-- mail-id is Temporary mail " + req.body.userMail);
+              return res.send(JSON.stringify({
+                "description": "Don't enter Temporary mail-ids...Enter a valid one",
+                "status": "failed"
+              }));
+            } else if (validMail === 'deliverable') {
+              req.body.firstName = toTitleCase(req.body.firstName);
+              firstName = req.body.firstName;
+              lastName = req.body.lastName;
+              gender = req.body.gender;
+              userMail = req.body.userMail;
+              password = req.body.password;
+              mobileNo = req.body.mobileNo;
 
-    var tokenForAuthentication;
-    var newuser = new Admin();
+              var tokenForAuthentication;
+              var newuser = new Admin();
 
-    let admin = await Admin.findOne({
-      userMail: req.body.userMail
-    });
-    if (admin) { //Checks whether mail exist      
-      if (admin.isVerified) { //If exist and verified
-        console.log('Usermail ' + req.body.userMail + ' already exists');
-        return res.send(JSON.stringify({
-          "description": "Your email is already registered...Please login",
-          "status": "failed"
-        }));
-      } else { //If exist but not verified
-        let myquery = {
-          userMail: admin.userMail
-        };
-        let newvalues = {
-          $set: {
-            firstName: req.body.firstName,
-            lastName: req.body.lastName,
-            gender: req.body.gender,
-            password: req.body.password,
-            mobileNo: req.body.mobileNo,
-            createdAt: Date(Date.now())
-          }
-        };
-        Admin.updateOne(myquery, newvalues, function (err, response) {
-          if (err) {
-            console.log(err);
-          }
-        });
-        tokenForAuthentication = admin.token;
-        var smtpTransport = nodemailer.createTransport({
-          service: 'Gmail',
-          auth: {
-            user: process.env.MAILER_EMAIL,
-            pass: process.env.MAILER_PASSWORD
-          }
-        });
-        var mailOptions = {
-          to: req.body.userMail,
-          subject: 'Request for registration',
-          text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication
-        };
-        smtpTransport.sendMail(mailOptions, async function (err) {
-          if (err) {
-            return res.send(JSON.stringify({
-              "description": "Invalid mail Id",
-              "status": "failed"
-            }));
-          }
-          console.log('An e-mail has been sent to ' + req.body.userMail + ' for registration');
-          return res.send(JSON.stringify({
-            "description": "Your request has not been verified yet...Activation link has been sent to your entered mail again!!!",
-            "status": "success"
-          }));
-        });
-      }
-    } else { //if it is a new mail-id
-      newuser.firstName = firstName;
-      newuser.lastName = lastName;
-      newuser.gender = gender;
-      newuser.userMail = userMail;
-      newuser.password = password;
-      newuser.mobileNo = mobileNo;
-      newuser.token = crypto.randomBytes(16).toString('hex');
-      tokenForAuthentication = newuser.token;
-      newuser.createdAt = Date(Date.now());
-      await (newuser.save(function (err, savedUser) {
-        if (err) {
+              let admin = await Admin.findOne({
+                userMail: req.body.userMail
+              });
+
+              if (admin) { //Checks whether mail exist      
+                if (admin.isVerified) { //If exist and verified
+                  console.log('Usermail ' + req.body.userMail + ' already exists');
+                  return res.send(JSON.stringify({
+                    "description": "Your email is already registered...Please login",
+                    "status": "failed"
+                  }));
+                } else { //If exist but not verified
+                  let myquery = {
+                    userMail: admin.userMail
+                  };
+
+                  let newvalues = {
+                    $set: {
+                      firstName: req.body.firstName,
+                      lastName: req.body.lastName,
+                      gender: req.body.gender,
+                      password: req.body.password,
+                      mobileNo: req.body.mobileNo,
+                      createdAt: Date(Date.now())
+                    }
+                  };
+
+
+                  Admin.updateOne(myquery, newvalues, function (err, response) {
+                    if (err) {
+                      console.log(err);
+                    }
+                  });
+
+
+                  tokenForAuthentication = admin.token;
+                  var smtpTransport = nodemailer.createTransport({
+                    service: 'Gmail',
+                    auth: {
+                      user: process.env.MAILER_EMAIL,
+                      pass: process.env.MAILER_PASSWORD
+                    }
+                  });
+
+
+                  var mailOptions = {
+                    to: req.body.userMail,
+                    subject: 'Request for registration',
+                    text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication
+                  };
+
+                  smtpTransport.sendMail(mailOptions, async function (err) {
+                    if (err) {
+                      return res.send(JSON.stringify({
+                        "description": "Invalid mail Id",
+                        "status": "failed"
+                      }));
+                    }
+                    console.log('An e-mail has been sent to ' + req.body.userMail + ' for registration');
+                    return res.send(JSON.stringify({
+                      "description": "Your request has not been verified yet...Activation link has been sent to your entered mail again!!!",
+                      "status": "success"
+                    }));
+                  });
+                }
+              } else { //if it is a new mail-id
+                newuser.firstName = firstName;
+                newuser.lastName = lastName;
+                newuser.gender = gender;
+                newuser.userMail = userMail;
+                newuser.password = password;
+                newuser.mobileNo = mobileNo;
+                newuser.token = crypto.randomBytes(16).toString('hex');
+                tokenForAuthentication = newuser.token;
+                newuser.createdAt = Date(Date.now());
+                await (newuser.save(function (err, savedUser) {
+                  if (err) {
+                    console.log(err);
+                    return res.status(200).send();
+                  }
+                }));
+
+                var smtpTransport = nodemailer.createTransport({
+                  service: 'Gmail',
+                  auth: {
+                    user: process.env.MAILER_EMAIL,
+                    pass: process.env.MAILER_PASSWORD
+                  }
+                });
+                var mailOptions = {
+                  to: req.body.userMail,
+                  subject: 'Request for registration',
+                  text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication,
+                };
+                smtpTransport.sendMail(mailOptions, async function (err, info) {
+                  console.log('An e-mail has been sent to ' + req.body.userMail + ' for registration');
+                  return res.send(JSON.stringify({
+                    "description": "Activation link has been sent to your entered mail!!!",
+                    "status": "success"
+                  }));
+                });
+              }
+            }
+          });
+        }
+        catch (err) {
           console.log(err);
-          return res.status(200).send();
-        }
-      }));
-
-      var smtpTransport = nodemailer.createTransport({
-        service: 'Gmail',
-        auth: {
-          user: process.env.MAILER_EMAIL,
-          pass: process.env.MAILER_PASSWORD
+          return res.status(500).send(err);
         }
       });
-      var mailOptions = {
-        to: req.body.userMail,
-        subject: 'Request for registration',
-        text: 'Hello,\n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/admin/confirmation\/' + tokenForAuthentication,
-      };
-      smtpTransport.sendMail(mailOptions, async function (err, info) {
-        console.log('An e-mail has been sent to ' + req.body.userMail + ' for registration');
-        return res.send(JSON.stringify({
-          "description": "Activation link has been sent to your entered mail!!!",
-          "status": "success"
-        }));
-      });
-    }
-  } catch (err) {
-    console.log(err);
-    return res.status(500).send(err);
-  }
-});
 
 //E-mail Verification
 adminRouter.get('/admin/confirmation/*', async (req, res, next) => {
@@ -342,6 +370,7 @@ adminRouter.post('/admin/forgotPassword', function (req, res, next) {
         Admin.findOne({
           userMail: req.body.userMail
         }, function (err, admin) {
+          console.log(admin);
           if (!admin) {
             console.log("Mail-Id doesn't exist...Create a new one!");
             return res.send(JSON.stringify({
@@ -349,16 +378,9 @@ adminRouter.post('/admin/forgotPassword', function (req, res, next) {
               "status": "failed"
             }));
           }
-
-          admin.resetPasswordToken = token;
-          admin.resetPasswordExpires = Date.now() + 3600000; // 1 hour
-
-          admin.save(function (err) {
-            done(err, token, admin);
-          });
         });
       },
-      function (admin) { //Passing the admin details to send the mail
+      function (token,admin,done) { //Passing the admin details to send the mail
         var smtpTransport = nodemailer.createTransport({
           service: 'Gmail',
           auth: {
@@ -482,8 +504,8 @@ adminRouter.post('/home/add/channelVideos', function (req, res) {
     var channel_name = req.body.channelName;
     var channel_id = req.body.channelId;
     var videos_id = req.body.videoIds;
-    var time = req.body.currentTime;
-    var date = req.body.currentDate;
+    var time = moment().utcOffset("+05:30").format('HH:mm:ss');
+    var date = moment().format("DD/MM/YYYY");
     var video_titles = req.body.videoTitles;
     var video_thumbnails = req.body.videoThumbnails;
     var changes_in_videos;
@@ -757,7 +779,6 @@ adminRouter.get('/user/feedback', function (req, res) {
     new_feedback.userMail = userMail;
     new_feedback.feedback = feedback;
     new_feedback.userName = userName;
-    new_feedback.dateTimeString = new Date().toLocaleString("en-US",{timeZone:'Asia/kolkata'});
     new_feedback.givenDate = moment().format("DD/MM/YYYY");
     new_feedback.givenTime = moment().utcOffset("+05:30").format('HH:mm:ss');
     new_feedback.save(function(err,feedback){
@@ -840,6 +861,65 @@ adminRouter.get('/home/admin/readFeedback',function(req,res){
     console.log(err);
     return res.status(500).send(err);
   }
+});
+
+adminRouter.post('/home/admin/replyFeedback',function(req,res){
+try{
+  var message = req.body.replyMessage;
+
+  var myquery = {
+    givenDate : req.body.givenDate,
+    givenTime : req.body.givenTime,
+    userMail : req.body.userMail
+  };
+  var newvalues = {
+    $set: {
+      repliedMessage : req.body.replyMessage,
+      isReplied : true,
+      read : true
+    }
+  };
+  Feedback.findOneAndUpdate(myquery, newvalues, function (err, response){
+    if(response.isModified != 0){
+    var smtpTransport = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.MAILER_EMAIL,
+        pass: process.env.MAILER_PASSWORD
+      }
+    });
+    var mailOptions = {
+      to: req.body.userMail,
+      subject: 'Reply for your Feedback',
+      text: message
+    };
+    smtpTransport.sendMail(mailOptions, async function (err) {
+      if (err) {
+        return res.send(JSON.stringify({
+          "description": "Error in sending feedback",
+          "status": "failed"
+        }));
+      }
+      console.log('Reply for feedback has been sent to ' + req.body.userMail);
+      return res.send(JSON.stringify({
+        "description": 'Reply for feedback has been sent to ' + req.body.userMail,
+        "status": "success"
+      }));
+    });
+  }
+  else{
+    console.log('No match to change in reply feedback');
+    return res.send(JSON.stringify({
+      "description": 'No matches found for ' + req.body.userMail  + ' and other data',
+      "status": "failed"
+    }));
+  }
+  });
+}
+catch(err){
+  console.log(err);
+  return res.status(500).send(err);
+}
 });
 
 //To get details of users registered through App
