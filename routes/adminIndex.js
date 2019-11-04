@@ -30,7 +30,7 @@ adminRouter.post('/admin/register', async (req, res) => {
             if (validMail === 'undeliverable') {
               console.log("Register-- mail-id is invalid " + req.body.userMail);
               return res.send(JSON.stringify({
-                "description": "Email you entered doesn't exist...Enter a valid one",
+                "description": "Email you entered doesn't exist...Enter a valid email-id",
                 "status": "failed"
               }));
             } else if (validMail === 'risky') {
