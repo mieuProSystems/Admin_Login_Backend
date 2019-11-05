@@ -14,8 +14,7 @@ const pipeline = [
     {
       $project: { documentKey: false }
     }
-  ];
-
+];
 
 dotenv.config();
 
@@ -42,7 +41,6 @@ useUnifiedTopology: true
   });
 });
 
-
 //Init App
 var app = express();
 
@@ -60,10 +58,16 @@ app.use(bodyParser.urlencoded({
 }));
 
 //Init Route
-var routes = require('./routes/adminIndex');
-//var user = require('./routes/userIndex');
-//app.use('/', user);
-app.use('/', routes);
+var admin     = require('./routes/adminIndex');
+var user      = require('./routes/userIndex');
+var feedback  = require('./routes/feedbackIndex');
+var channel   = require('./routes/channelIndex');
+
+app.use('/', admin);
+app.use('/', user);
+app.use('/', feedback);
+app.use('/', channel);
+
 
 //Set Port
 app.set('port', (process.env.PORT || 3000));
