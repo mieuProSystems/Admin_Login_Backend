@@ -20,7 +20,6 @@ channelRouter.get('/test', function (req, res) {
     }
 });
 
-
 //Add Channel and video info
 channelRouter.post('/home/add/channelVideos', function (req, res) {
 try {
@@ -95,12 +94,13 @@ try {
     var videos_id = req.body.videoId;
     var video_title = req.body.videoTitles;
     var video_thumbnails = req.body.videoThumbnails;
+    //console.log(req.body);
     Channel.findOne({
     channelId: channel_id
     }, function (err, channel) {
     if (channel) {
     if (((underscore.difference(videos_id,channel.videoIds)).length)== 0 || underscore.contains(channel.videoIds,videos_id))  {
-        Channel.update({
+        Channel.updateMany({
             channelId: channel_id
         }, {
             $pull: {
@@ -110,6 +110,7 @@ try {
             }
         },
         {multi : true}, function (err, response) {
+            //console.log(response);
             if (response.nModified){
             console.log("Videos deleted successfully");
             return res.status(200).send(JSON.stringify({
@@ -147,9 +148,11 @@ try {
 });
 
 //Remove Channel
-channelRouter.post('/home/remove/channel', function (req, res) {
+channelRouter.post('/home/manageVideos/removeChannel', function (req, res) {
 try {
-    var channel_id = req.body.channel;
+    var channel_id = req.body.channelId;
+
+    
     Channel.findOne({
     channelId: channel_id
     }, function (err, channel) {
