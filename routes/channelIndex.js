@@ -3,7 +3,6 @@ var channelRouter = express.Router();
 var Channel = require('../lib/channelSchema');
 var moment = require('moment-timezone');
 var underscore = require('underscore');
-var numberOfTimes = 0;
 
 channelRouter.get('/test', function (req, res) {
     try {
@@ -90,8 +89,9 @@ try {
 //Remove video Info
 channelRouter.post('/home/manageVideos/removeVideo', function (req, res) {
 try {
+    //console.log(req.body);
     var channel_id = req.body.channelId;
-    var videos_id = req.body.videoId;
+    var videos_id = req.body.videoIds;
     var video_title = req.body.videoTitles;
     var video_thumbnails = req.body.videoThumbnails;
     //console.log(req.body);
@@ -99,7 +99,12 @@ try {
     channelId: channel_id
     }, function (err, channel) {
     if (channel) {
-    if (((underscore.difference(videos_id,channel.videoIds)).length)== 0 || underscore.contains(channel.videoIds,videos_id))  {
+      console.log('length 1 is ' + channel.videoIds.length);
+      //console.log('length is ' + channel.videoIds.length);
+    if ((((underscore.difference(videos_id,channel.videoIds)).length) == 0 || underscore.contains(channel.videoIds,videos_id)) &&
+        (((underscore.difference(video_title,channel.videoTitles)).length)== 0 || underscore.contains(channel.videoTitles,video_title)) && 
+        (((underscore.difference(video_thumbnails,channel.videoThumbnails)).length)== 0 || underscore.contains(channel.videoThumbnails,video_thumbnails)))
+        {
         Channel.updateMany({
             channelId: channel_id
         }, {
@@ -112,6 +117,19 @@ try {
         {multi : true}, function (err, response) {
             //console.log(response);
             if (response.nModified){
+              if(channel.videoIds.length == 0 )
+              {
+                Channel.deleteOne({
+                channelId: channel_id
+                }, function (err, obj) {
+                if (err) throw err;
+                console.log("All video deleted in " + channel.channelName);
+                return res.status(200).send(JSON.stringify({
+                    "description": "You deleted all videos of " + channel.channelName,
+                    "status": "success"
+                }));
+                });
+            }
             console.log("Videos deleted successfully");
             return res.status(200).send(JSON.stringify({
                 "description": "Videos deleted successfully",
@@ -182,7 +200,6 @@ try {
 //Get the details about the channels and videos
 channelRouter.get('/home/getVideos', function (req, res) {
 try {
-    numberOfTimes = numberOfTimes + 1;
     var usersProjection = {
     __v: false,
     _id: false,
@@ -191,9 +208,8 @@ try {
     };
 
     Channel.find({}, usersProjection).sort('-currentDate').sort('-currentTime').exec(function (err, channel) {
-    
     if (err) return next(err);
-    console.log("Get Video request processed successfully " + numberOfTimes);
+    console.log("Get Video request processed");
     return res.status(200).send(JSON.stringify(channel));
     });
 } catch (err) {
