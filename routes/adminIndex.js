@@ -552,7 +552,7 @@ adminRouter.post('/home/myProfile/getDetails', function (req, res) {
       Admin.findOne({
         userMail: session.userMail
       }, usersProjection, function (err, admin) {
-        console.log("Get Profile request processed successfully");
+        console.log("Get Profile request processed");
         return res.status(200).send(JSON.stringify(admin));
       });
     }
@@ -580,7 +580,7 @@ adminRouter.get('/admin/getLoginSessions', function (req, res) {
       // userMail: req.body.userMail
     }, usersProjection).sort('-loginTime').exec(function (err, session) {
       if (err) return next(err);
-      console.log("Get Sessions request processed successfully");
+      console.log("Get Sessions request processed");
       if (session)
         return res.status(200).send(JSON.stringify(session));
       else
@@ -610,7 +610,7 @@ adminRouter.get('/home/admin/getAdminDetails', function (req, res) {
 
     Admin.find({}, usersProjection, function (err, admin) {
       if (err) return next(err);
-      console.log("Get Admin details request processed successfully");
+      console.log("Get Admin details request processed");
       //console.log(admin);
       return res.status(200).send(JSON.stringify(admin));
     });

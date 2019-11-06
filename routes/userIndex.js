@@ -17,7 +17,7 @@ userRouter.get('/home/admin/getUserDetails',function(req,res){
   
       UserCredentials.find({}, usersProjection).sort('username').exec(function (err, user) {
         if (err) return next(err);
-        console.log("Get User Details processed successfully ");
+        console.log("Get User Details request processed");
         return res.status(200).send(JSON.stringify(user));
       });
     } catch (err) {
