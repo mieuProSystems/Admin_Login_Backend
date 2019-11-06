@@ -26,7 +26,7 @@ mongoose.connect('mongodb+srv://'+ process.env.DB_USERNAME + ':' + process.env.D
     useFindAndModify: false
 });
 
-MongoClient.connect("mongodb+srv://user1:pwd123@cluster0-vhws5.mongodb.net/test?retryWrites=true&w=majority",{
+MongoClient.connect('mongodb+srv://'+ process.env.DB_USERNAME + ':' + process.env.DB_PASSWORD +'@cluster0-vhws5.mongodb.net/test?retryWrites=true&w=majority',{
 useNewUrlParser: true,
 useUnifiedTopology: true
 }).then(client => {
