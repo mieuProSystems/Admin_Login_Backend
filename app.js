@@ -8,7 +8,6 @@ const userAuthenticationRoutes = require('./routes/user_authentication');
 const userVerificationRoutes = require('./routes/user_verification');
 
 const MongoClient = require("mongodb").MongoClient;
-const assert = require("assert");
 
 const pipeline = [
     {
@@ -19,14 +18,14 @@ const pipeline = [
 dotenv.config();
 
 //Establishing the connection to the database
-mongoose.connect('mongodb+srv://'+ process.env.DB_USERNAME + ':' + process.env.DB_PASSWORD +'@cluster0-vhws5.mongodb.net/test?retryWrites=true&w=majority', {
+mongoose.connect(process.env.DB_CONNECT, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     useCreateIndex: true,
     useFindAndModify: false
 });
 
-MongoClient.connect('mongodb+srv://'+ process.env.DB_USERNAME + ':' + process.env.DB_PASSWORD +'@cluster0-vhws5.mongodb.net/test?retryWrites=true&w=majority',{
+MongoClient.connect(process.env.DB_CONNECT,{
 useNewUrlParser: true,
 useUnifiedTopology: true
 }).then(client => {
@@ -57,7 +56,7 @@ app.use(bodyParser.urlencoded({
     extended: false
 }));
 
-//Init Route
+//Init Route 
 var admin     = require('./routes/adminIndex');
 var user      = require('./routes/userIndex');
 var feedback  = require('./routes/feedbackIndex');

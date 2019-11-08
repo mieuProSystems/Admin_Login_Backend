@@ -361,7 +361,7 @@ adminRouter.post('/admin/forgotPassword', function (req, res, next) {
         Admin.findOne({
           userMail: req.body.userMail
         }, function (err, admin) {
-          console.log(admin);
+          //console.log(admin);
           if (!admin) {
             console.log("Mail-Id doesn't exist...Create a new one!");
             return res.send(JSON.stringify({
@@ -369,28 +369,28 @@ adminRouter.post('/admin/forgotPassword', function (req, res, next) {
               "status": "failed"
             }));
           }
-        });
-      },
-      function (token, admin, done) { //Passing the admin details to send the mail
-        var smtpTransport = nodemailer.createTransport({
-          service: 'Gmail',
-          auth: {
-            user: process.env.MAILER_EMAIL,
-            pass: process.env.MAILER_PASSWORD
+          else{
+            var smtpTransport = nodemailer.createTransport({
+              service: 'Gmail',
+              auth: {
+                user: process.env.MAILER_EMAIL,
+                pass: process.env.MAILER_PASSWORD
+              }
+            });
+            var mailOptions = {
+              to: req.body.userMail,
+              subject: 'Admin Password',
+              text: 'Your Password is \"' + admin.password + '\"'
+            };
+            smtpTransport.sendMail(mailOptions, function (err) {
+    
+              console.log('Password has been sent to ' + req.body.userMail + ' with further instructions.');
+              return res.send(JSON.stringify({
+                "description": "Password has been sent to your registered mail!!!",
+                "status": "success"
+              }));
+            });
           }
-        });
-        var mailOptions = {
-          to: req.body.userMail,
-          subject: 'Admin Password',
-          text: 'Your Password is \"' + admin.password + '\"'
-        };
-        smtpTransport.sendMail(mailOptions, function (err) {
-
-          console.log('Password has been sent to ' + req.body.userMail + ' with further instructions.');
-          return res.send(JSON.stringify({
-            "description": "Password has been sent to your registered mail!!!",
-            "status": "success"
-          }));
         });
       }
     ], function (err) {

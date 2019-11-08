@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const moment = require('moment');
 
 const user_credential_schema = new Schema({
     email: {
@@ -29,6 +30,10 @@ const user_credential_schema = new Schema({
     isVerified: {
         type: Boolean,
         default: false
+    },
+    joinedAt : {
+        type : String,
+        default : moment().format('ll')
     },
     password: String
 });

@@ -3,7 +3,7 @@ const Jwt = require('jsonwebtoken');
 const UserCredentials = require('../datamodels/user_credentials');
 const mailVerification = require('../send_verification_mail');
 const router = express.Router();
-var kickbox = require('kickbox').client('live_9578ccacf704f813f66f0aa075e210c7b88835458d7a793065adde401dcca649').kickbox();
+var kickbox = require('kickbox').client(process.env.KICKBOX_API_KEY).kickbox();
 
 function toTitleCase(str) {
   return str.replace(/\w\S*/g, function (txt) {
@@ -116,7 +116,7 @@ router.post('/user/login', async function (request, response) {
   //if token already exists
   if (user.isVerified) {
     console.log(request.connection.remoteAddress);
-    console.log("Logged in");
+    console.log(user.username + " Logged in");
     return response.send(JSON.stringify({
       'token': user.token,
       'status': 2
@@ -167,5 +167,28 @@ router.post('/user/logout', async function (request, response) {
 
 });
 
+//to get user profile
+router.post('/user/accountInformation',function(req,res){
+  var userToken = req.body.token;
+  
+  try {
+    var usersProjection = {
+    __v: false,
+    _id: false,
+    registrationMethod: false,
+    token: false,
+    isVerified : false,
+    };
+
+    UserCredentials.findOne({token : userToken}, usersProjection).exec(function (err, user) {
+    if (err) return next(err);
+    console.log("Get profile details request for " + user.username + "  processed");
+    return res.status(200).send(JSON.stringify(user));
+    });
+} catch (err) {
+    console.log(err);
+    return res.status(500).send(err);
+}
+});
 
 module.exports = router;
