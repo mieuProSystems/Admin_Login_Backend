@@ -7,8 +7,9 @@ var nodemailer = require('nodemailer');
 var dotenv = require('dotenv');
 var crypto = require('crypto');
 var moment = require('moment-timezone');
-var kickbox = require('kickbox').client('live_9578ccacf704f813f66f0aa075e210c7b88835458d7a793065adde401dcca649').kickbox();
+const Jwt = require('jsonwebtoken');
 dotenv.config();
+var kickbox = require('kickbox').client(process.env.KICKBOX_API_KEY).kickbox();
 var firstName, lastName, userMail, password, gender, mobileNo, sessionToken;
 
 function toTitleCase(str) {
@@ -115,7 +116,11 @@ adminRouter.post('/admin/register', async (req, res) => {
           newuser.userMail = userMail;
           newuser.password = password;
           newuser.mobileNo = mobileNo;
-          newuser.token = crypto.randomBytes(16).toString('hex');
+          newuser.token = Jwt.sign({
+            Name: firstName,
+            Email : userMail
+          },
+          process.env.TOKEN_SECRET);
           tokenForAuthentication = newuser.token;
           newuser.createdAt = Date(Date.now());
           await (newuser.save(function (err, savedUser) {
@@ -242,7 +247,15 @@ adminRouter.post('/admin/login', function (req, res) {
             } else {
               Admin.updateOne(myquery, newvalues, function (err, response) {
                 console.log("Login Success for " + admin.userMail);
-                sessionToken = crypto.randomBytes(16).toString('hex');
+                sessionToken = Jwt.sign({
+                  Name: admin.firstName,
+                  Email : admin.userMail,
+                  LoginAt : moment().utcOffset("+05:30").format('DD/MM/YYYY, HH:mm:ss')
+                },
+                process.env.TOKEN_SECRET,
+                {
+                  expiresIn : "12h"
+                });
                 var loginsession = new adminSession(); //Creating Session Log
                 loginsession.userMail = admin.userMail;
                 loginsession.firstName = admin.firstName;
@@ -409,7 +422,10 @@ adminRouter.post('/admin/changePassword', function (req, res) {
     var myquery = {
       userMail: req.body.userMail
     };
-    var changePwdToken = crypto.randomBytes(16).toString('hex');
+    var changePwdToken = Jwt.sign({
+      Email : req.body.userMail
+    },
+    process.env.TOKEN_SECRET);
     var newvalues = {
       $set: {
         changePasswordToken: changePwdToken
